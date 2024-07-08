@@ -2,7 +2,6 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 class CustomUser(AbstractUser):
-    email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=255, blank=True, null=True)
     momentus_user_name = models.CharField(max_length=20, unique=True)
     is_prime = models.BooleanField(default=False)
@@ -10,7 +9,7 @@ class CustomUser(AbstractUser):
     email_verified = models.BooleanField(default=False)
     verification_code = models.CharField(max_length=4, blank=True, null=True)
 
-      # Ensure related_name is unique to avoid conflicts
+    # Ensure related_name is unique to avoid conflicts
     groups = models.ManyToManyField(
         'auth.Group',
         related_name='customuser_set',
