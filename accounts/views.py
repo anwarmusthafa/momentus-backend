@@ -1,4 +1,3 @@
-import string
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -19,47 +18,73 @@ class RegisterUserView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         try:
+            print(request.data)
+
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
-            
-            # Generate a verification code
-            verification_code = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
+            verification_code = str(random.randint(1000, 9999))
             user.verification_code = verification_code
+            print(verification_code)
             user.save()
-
             send_verification_email(user.username, verification_code)
+            return Response({'message': 'User registered. Check your email for verification code.', 'user': user.id}, status=status.HTTP_201_CREATED)
 
-            return Response({'message': 'User registered. Check your email for verification code.'}, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
-            return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
+            error_messages = e.detail
+            response_errors = {}
+            for field, messages in error_messages.items():
+                response_errors[field] = messages[0] 
+
+            return Response({'error': response_errors}, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
+            # Log any other exceptions
+            print(f"Exception: {str(e)}")
+
+            # Return a generic error message
             return Response({'error': 'An error occurred during registration. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyEmailView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     serializer_class = VerifyEmailSerializer
-    
+
     def post(self, request, *args, **kwargs):
         try:
+            print('Received data:', request.data)
             serializer = self.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
+            if not serializer.is_valid():
+                print('Validation errors:', serializer.errors)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+            print('Serializer validated data:', serializer.validated_data)
             verification_code = serializer.validated_data['verification_code']
+            user_id = int(serializer.validated_data['user_id'])
             
-            user = CustomUser.objects.get(verification_code=verification_code)
+            user = CustomUser.objects.get(id=user_id)
+            user_verification_code = str(user.verification_code).strip()
+            print("otp",user.verification_code, verification_code)
+            if user.verification_code != verification_code:
+                print('Invalid verification code:', verification_code)
+                return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
             if user.email_verified:
+                print('Email already verified for user:', user_id)
                 return Response({'message': 'Email is already verified.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            user.email_verified = True
-            user.save()
-            
+            if user.verification_code == verification_code:
+                user.email_verified = True
+                user.save()
+                print('Email verified for user:', user_id)
             return Response({'message': 'Email verified successfully. Please login'}, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
-            return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
+            print('User not found:', user_id)
+            return Response({'error': 'User not found.'}, status=status.HTTP_400_BAD_REQUEST)
         except serializers.ValidationError as e:
+            print('Validation error:', e.detail)
             return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            print('Exception:', e)
             return Response({'error': 'An error occurred during email verification. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -68,14 +93,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'username': attrs.get('username'),
                 'password': attrs.get('password')
             }
-            user = User.objects.filter(username=credentials['username']).first()
-
+            user = CustomUser.objects.filter(username=credentials['username']).first()
             if user is None:
+                print('User not found:', credentials['username'])
                 raise serializers.ValidationError('Invalid username or password.')
             
             if not user.email_verified:
+                print('Email not verified for user:', user.id)
                 raise serializers.ValidationError('Email is not verified.')
 
+            # Call the parent class's validate method
             return super().validate(attrs)
         except serializers.ValidationError as e:
             raise serializers.ValidationError(e.detail)
