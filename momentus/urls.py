@@ -9,4 +9,5 @@ urlpatterns = [
     path('accounts/token/refresh/', TokenRefreshView.as_view(), name='refresh'),
     path("api-auth/", include("rest_framework.urls")),
     path("accounts/", include("accounts.urls")),
+    path("", include("posts.urls")),
 ]
