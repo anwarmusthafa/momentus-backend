@@ -8,6 +8,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .serializers import UserSerializer, VerifyEmailSerializer
 from .models import CustomUser
 from .utils import send_verification_email
+from rest_framework.views import APIView
 
 User = get_user_model()
 
@@ -111,3 +112,78 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+class ForgotPassword(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        try:
+            print("forgotpassword")
+            email = request.data.get('email')
+            user = CustomUser.objects.get(username=email)
+            if user:
+                verification_code = str(random.randint(1000, 9999))
+                user.verification_code = verification_code
+                user.save()
+                send_verification_email(user.username, verification_code)
+                return Response({'message': 'Email sent. Check your email for verification code.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class ForgotPasswordOTP(APIView):
+    permission_classes = [AllowAny]
+    def post(self,request):
+        try:
+            print("forgotpasswordotp")
+            email = request.data.get('email')
+            otp = request.data.get('otp')
+            user = CustomUser.objects.get(username=email)
+            if user:
+                if user.verification_code == otp:
+                    return Response({"message":"Otp is verified , Please reset the password"},status=status.HTTP_200_OK)
+                else:
+                    return Response({"error":"Otp is invalid, Try Again"})
+            else:
+                return Response({"error":"User not found"})
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class ResetPassword(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        try:
+            email = request.data.get('email')
+            otp = request.data.get('otp')
+            new_password = request.data.get('new_password')
+
+            user = CustomUser.objects.get(username=email)
+            if user and user.verification_code == otp:
+                # Validate the new password
+                serializer = UserSerializer()
+                try:
+                    validated_password = serializer.validate_password(new_password)
+                except serializers.ValidationError as e:
+                    return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
+                user.set_password(validated_password)
+                user.save()
+                return Response({"message": "Password reset is successful"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Invalid OTP or email"}, status=status.HTTP_400_BAD_REQUEST)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+        
+
+                
+            
+
+        

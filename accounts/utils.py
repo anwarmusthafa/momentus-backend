@@ -4,6 +4,7 @@ from django.conf import settings
 def send_verification_email(email, verification_code):
     subject = 'Verify Your Email'
     message = f'Your verification code is: {verification_code}'
+    print(verification_code)
     email_from = settings.DEFAULT_FROM_EMAIL
     recipient_list = [email]
     
