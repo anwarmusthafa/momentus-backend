@@ -1,6 +1,6 @@
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny , IsAuthenticated
 from django.contrib.auth import get_user_model
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -144,9 +144,9 @@ class ForgotPasswordOTP(APIView):
                 if user.verification_code == otp:
                     return Response({"message":"Otp is verified , Please reset the password"},status=status.HTTP_200_OK)
                 else:
-                    return Response({"error":"Otp is invalid, Try Again"})
+                    return Response({"error":"Otp is invalid, Try Again"},status=status.HTTP_404_NOT_FOUND)
             else:
-                return Response({"error":"User not found"})
+                return Response({"error":"User not found"},status=status.HTTP_404_NOT_FOUND)
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
@@ -176,6 +176,17 @@ class ResetPassword(APIView):
             return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class GetProfile(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        try:
+            profile = CustomUser.objects.get(id=user.id)
+            serializer = UserSerializer(profile, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 

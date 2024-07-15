@@ -6,8 +6,10 @@ class CustomUser(AbstractUser):
     momentus_user_name = models.CharField(max_length=20, unique=True)
     is_prime = models.BooleanField(default=False)
     bio = models.TextField(blank=True, null=True)
+    profile_picture = models.ImageField(upload_to="profile_pictures/", null=True, blank=True)
     email_verified = models.BooleanField(default=False)
     verification_code = models.CharField(max_length=4, blank=True, null=True)
+
 
     # Ensure related_name is unique to avoid conflicts
     groups = models.ManyToManyField(

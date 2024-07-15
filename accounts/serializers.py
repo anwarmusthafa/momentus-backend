@@ -7,9 +7,15 @@ import re
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    profile_picture_url = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "username", "full_name", "password", "momentus_user_name", "is_prime", "bio", "email_verified", "verification_code"]
+        fields = [
+            "id", "username", "full_name", "password", "momentus_user_name",
+            "is_prime", "bio", "email_verified", "verification_code",
+            "profile_picture_url"
+        ]
         extra_kwargs = {
             "password": {"write_only": True}
         }
@@ -40,6 +46,12 @@ class UserSerializer(serializers.ModelSerializer):
         if not re.search(r'[!@#$%^&*()_+={}\[\]|\\:;\'",.<>?/-]', value):
             raise serializers.ValidationError("Password must contain at least one special character.")
         return value
+
+    def get_profile_picture_url(self, obj):
+        if obj.profile_picture:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.profile_picture.url)
+        return None
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
