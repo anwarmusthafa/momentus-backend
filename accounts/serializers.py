@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from django.core.exceptions import ValidationError
 import re
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
 
@@ -60,3 +61,18 @@ class VerifyEmailSerializer(serializers.Serializer):
     verification_code = serializers.CharField(max_length=4)
     user_id = serializers.IntegerField()
 
+class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        credentials = {
+            'username': attrs.get('username'),
+            'password': attrs.get('password')
+        }
+        user = User.objects.filter(username=credentials['username']).first()
+        
+        if user is None:
+            raise serializers.ValidationError('Invalid username or password.')
+
+        if not user.is_superuser:
+            raise serializers.ValidationError('You are not authorized as an admin.')
+
+        return super().validate(attrs)

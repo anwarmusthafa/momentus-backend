@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .serializers import UserSerializer, VerifyEmailSerializer
+from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer
 from .models import CustomUser
 from .utils import send_verification_email
 from rest_framework.views import APIView
@@ -187,14 +187,8 @@ class GetProfile(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
+class AdminTokenObtainPairView(TokenObtainPairView):
+    serializer_class = AdminTokenObtainPairSerializer
 
 
-
-
-
-        
-
-                
-            
-
-        
+    

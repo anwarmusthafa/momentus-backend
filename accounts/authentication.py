@@ -9,4 +9,6 @@ class CustomJWTAuthentication(JWTAuthentication):
         user, validated_token = result
         if user and not user.email_verified:
             raise AuthenticationFailed('Email is not verified.')
+        if user and user.is_blocked == True:
+            raise AuthenticationFailed('User is blocked by Admin.')
         return user, validated_token
