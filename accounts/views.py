@@ -9,6 +9,7 @@ from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtai
 from .models import CustomUser
 from .utils import send_verification_email
 from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
 
 User = get_user_model()
 
@@ -176,7 +177,7 @@ class ResetPassword(APIView):
             return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-class GetProfile(APIView):
+class Profile(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -187,6 +188,19 @@ class GetProfile(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
+    def patch(self, request):
+        user = request.user
+        profile = get_object_or_404(CustomUser, id=user.id)
+        print("data",request.data)
+        serializer = UserSerializer(profile, data=request.data, partial=True, context={'request': request})
+        
+        if serializer.is_valid():
+            serializer.save()
+            print(serializer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
 class AdminTokenObtainPairView(TokenObtainPairView):
     serializer_class = AdminTokenObtainPairSerializer
 
