@@ -1,9 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Post
-from .serializers import PostSerializer
-from rest_framework.permissions import IsAuthenticated
+from .models import Post, Comment
+from .serializers import PostSerializer ,  CommentSerializer
+from rest_framework.permissions import IsAuthenticated , AllowAny
 
 class PostAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -27,3 +27,32 @@ class MyPosts(APIView):
             return Response({'error': 'Posts not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class PostDetailView(APIView):
+    permission_classes = [ AllowAny]
+
+    def get(self, request,id):
+        try:
+            post = Post.objects.get(id=id)
+            serializer = PostSerializer(post, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class Comments(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            post_id = request.query_params.get('post-id')  # Use query parameters for GET requests
+            if not post_id:
+                return Response({"error": "Post ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            comments = Comment.objects.filter(post__id=post_id)
+            serializer = CommentSerializer(comments, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Comment.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+

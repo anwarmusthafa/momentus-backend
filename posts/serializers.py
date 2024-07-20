@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post
+from .models import Post , Comment
 
 class PostSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -22,3 +22,8 @@ class PostSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user'):
             validated_data['user'] = request.user
         return super().create(validated_data)
+
+class CommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['id', 'user', 'post', 'comment', 'created_at', 'updated_at']
