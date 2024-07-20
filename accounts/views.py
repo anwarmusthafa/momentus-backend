@@ -114,6 +114,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
+class AdminTokenObtainPairView(TokenObtainPairView):
+    serializer_class = AdminTokenObtainPairSerializer
+
+
 class ForgotPassword(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
@@ -191,18 +195,14 @@ class Profile(APIView):
     def patch(self, request):
         user = request.user
         profile = get_object_or_404(CustomUser, id=user.id)
-        print("data",request.data)
         serializer = UserSerializer(profile, data=request.data, partial=True, context={'request': request})
-        
         if serializer.is_valid():
             serializer.save()
-            print(serializer)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        
+            updated_profile = CustomUser.objects.get(id=user.id)
+            updated_serializer = UserSerializer(updated_profile, context={'request': request})
+            return Response(updated_serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
-class AdminTokenObtainPairView(TokenObtainPairView):
-    serializer_class = AdminTokenObtainPairSerializer
 
 
     
