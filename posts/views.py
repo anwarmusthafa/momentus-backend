@@ -17,10 +17,10 @@ class PostAPI(APIView):
 class MyPosts(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request,momentus_user_name):
         try:
-            user = request.user
-            my_posts = Post.objects.filter(user=user).order_by('-created_at')
+            momentus_user_name = momentus_user_name
+            my_posts = Post.objects.filter(user__momentus_user_name=momentus_user_name).order_by('-created_at')
             serializer = PostSerializer(my_posts, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Post.DoesNotExist:

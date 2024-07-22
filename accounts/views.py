@@ -181,9 +181,9 @@ class ResetPassword(APIView):
             return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-class Profile(APIView):
+        
+class MyProfile(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         user = request.user
         try:
@@ -202,6 +202,16 @@ class Profile(APIView):
             updated_serializer = UserSerializer(updated_profile, context={'request': request})
             return Response(updated_serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserProfile(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, momentus_user_name):
+        try:
+            user = CustomUser.objects.get(momentus_user_name=momentus_user_name)
+            serializer = UserSerializer(user, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
             
 
 
