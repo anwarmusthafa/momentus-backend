@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post , Comment
+from .models import Post , Comment , Like
 
 class PostSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -50,3 +50,8 @@ class CommentSerializer(serializers.ModelSerializer):
         if obj.user.profile_picture:
             return request.build_absolute_uri(obj.user.profile_picture.url)
         return None
+
+class LikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Like
+        fields = ['id', 'user', 'post', 'created_at']

@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Post, Comment
-from .serializers import PostSerializer ,  CommentSerializer
+from .models import Post, Comment , Like
+from .serializers import PostSerializer ,  CommentSerializer , LikeSerializer
 from rest_framework.permissions import IsAuthenticated , AllowAny 
 from django.shortcuts import get_object_or_404
 
@@ -73,6 +73,35 @@ class Comments(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class LikePost(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        try:
+            post = Post.objects.get(id=post_id)
+            data = request.data
+            data['post'] = post.id
+            data['user'] = request.user.id
+            serializer = LikeSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class UnLikePost(APIView):
+    def post(self, request, post_id):
+        try:
+            like = Like.objects.get(post=post_id, user=request.user)
+            like.delete()
+            return Response({"message": "Like deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except Like.DoesNotExist:
+            return Response({"error": "Like not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
