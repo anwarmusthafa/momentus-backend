@@ -36,13 +36,20 @@ class MyPosts(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class PostDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, id):
         try:
             post = Post.objects.get(id=id)
+            like_count = Like.objects.filter(post=post).count()
+            comment_count = Comment.objects.filter(post=post).count()
+            liked_by_user = Like.objects.filter(post=post, user=request.user).exists()
             serializer = PostSerializer(post, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            post_data = dict(serializer.data)  # Make a copy of the data to make it mutable
+            post_data['like_count'] = like_count
+            post_data['comment_count'] = comment_count
+            post_data['liked_by_user'] = liked_by_user
+            return Response(post_data, status=status.HTTP_200_OK)
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
 
