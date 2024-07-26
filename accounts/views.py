@@ -212,7 +212,20 @@ class UserProfile(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-            
+
+class SearchUser(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.GET.get('query')
+        if not query:
+            return Response({"error": "Invalid query"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            users = CustomUser.objects.filter(momentus_user_name__icontains=query)
+            serializer = UserSerializer(users, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
     
