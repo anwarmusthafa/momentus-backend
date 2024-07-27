@@ -5,6 +5,8 @@ from .models import Post, Comment , Like
 from .serializers import PostSerializer ,  CommentSerializer , LikeSerializer
 from rest_framework.permissions import IsAuthenticated , AllowAny 
 from django.shortcuts import get_object_or_404
+from django.db.models import Count
+from itertools import chain
 
 class PostAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -111,6 +113,28 @@ class UnLikePost(APIView):
             return Response({"error": "Like not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ExploreView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Get popular posts (e.g., most liked)
+            popular_posts = Post.objects.annotate(like_count=Count('like')).order_by('-like_count')[:10]
+
+            # Get latest posts
+            latest_posts = Post.objects.order_by('-created_at')[:10]
+
+            # Combine the two querysets and remove duplicates
+            combined_posts = list(chain(popular_posts, latest_posts))
+            combined_posts = list({post.id: post for post in combined_posts}.values())[:20]  # Limit to 20 posts
+
+            serializer = PostSerializer(combined_posts, many=True, context={'request': request})
+            return Response(serializer.data)
+        except Exception as e:
+            print(f"Error in ExploreView: {str(e)}")
+            return Response({"error": "An error occurred while processing the request."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     
 
 

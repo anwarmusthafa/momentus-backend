@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import PostAPI, MyPosts, Comments, PostDetailView , LikePost , UnLikePost
+from .views import PostAPI, MyPosts, Comments, PostDetailView , LikePost , UnLikePost , ExploreView
 
 urlpatterns = [
     path('comments/<int:post_id>/', Comments.as_view(), name='comments-list'),
@@ -10,4 +10,5 @@ urlpatterns = [
     path('delete-post/<int:id>/', PostAPI.as_view(), name='delete_post'),
     path('like-post/<int:post_id>/', LikePost.as_view(), name='like_post'),
     path('unlike-post/<int:post_id>/', UnLikePost.as_view(), name='like_post'),
+    path('explore/', ExploreView.as_view(), name='explore'),
 ]
