@@ -30,7 +30,7 @@ class MyPosts(APIView):
     def get(self, request,momentus_user_name):
         try:
             momentus_user_name = momentus_user_name
-            my_posts = Post.objects.filter(user__momentus_user_name=momentus_user_name).order_by('-created_at')
+            my_posts = Post.objects.filter(user__momentus_user_name=momentus_user_name , is_blocked=False).order_by('-created_at')
             serializer = PostSerializer(my_posts, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Post.DoesNotExist:
@@ -42,18 +42,24 @@ class PostDetailView(APIView):
 
     def get(self, request, id):
         try:
-            post = Post.objects.get(id=id)
+            # Fetch the post with the given ID and ensure it is not blocked
+            post = Post.objects.filter(id=id, is_blocked=False).first()
+            if not post:
+                return Response({"error": "Post not found or is blocked"}, status=status.HTTP_404_NOT_FOUND)
+            
             like_count = Like.objects.filter(post=post).count()
             comment_count = Comment.objects.filter(post=post).count()
             liked_by_user = Like.objects.filter(post=post, user=request.user).exists()
+            
             serializer = PostSerializer(post, context={'request': request})
             post_data = dict(serializer.data)  # Make a copy of the data to make it mutable
             post_data['like_count'] = like_count
             post_data['comment_count'] = comment_count
             post_data['liked_by_user'] = liked_by_user
+            
             return Response(post_data, status=status.HTTP_200_OK)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": "An error occurred while processing the request."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class Comments(APIView):
     permission_classes = [IsAuthenticated]
@@ -119,11 +125,11 @@ class ExploreView(APIView):
 
     def get(self, request):
         try:
-            # Get popular posts (e.g., most liked)
-            popular_posts = Post.objects.annotate(like_count=Count('like')).order_by('-like_count')[:10]
+            # Get popular posts (e.g., most liked) excluding blocked posts
+            popular_posts = Post.objects.filter(is_blocked=False).annotate(like_count=Count('like')).order_by('-like_count')[:10]
 
-            # Get latest posts
-            latest_posts = Post.objects.order_by('-created_at')[:10]
+            # Get latest posts excluding blocked posts
+            latest_posts = Post.objects.filter(is_blocked=False).order_by('-created_at')[:10]
 
             # Combine the two querysets and remove duplicates
             combined_posts = list(chain(popular_posts, latest_posts))
