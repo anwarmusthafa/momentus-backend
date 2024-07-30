@@ -16,7 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "full_name", "password", "momentus_user_name",
             "is_prime", "bio", "email_verified", "verification_code","profile_picture",
-            "profile_picture_url"
+            "profile_picture_url", "is_blocked"
         ]
         extra_kwargs = {
             "password": {"write_only": True}

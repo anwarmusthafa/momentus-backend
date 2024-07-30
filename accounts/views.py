@@ -104,6 +104,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 print('Email not verified for user:', user.id)
                 raise serializers.ValidationError('Email is not verified.')
 
+            if user.is_blocked:
+                print('User is blocked by Admin:', user.id)
+                raise serializers.ValidationError('User is blocked by Admin.')
+
             # Call the parent class's validate method
             return super().validate(attrs)
         except serializers.ValidationError as e:
