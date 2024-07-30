@@ -8,7 +8,7 @@ class CustomUser(AbstractUser):
     bio = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(upload_to="profile_pictures/", null=True, blank=True)
     email_verified = models.BooleanField(default=False)
-    verification_code = models.CharField(max_length=4, blank=True, null=True)
+    verification_code = models.TextField(blank=True, null=True)
     is_blocked = models.BooleanField(default=False)
 
 

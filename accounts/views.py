@@ -10,6 +10,7 @@ from .models import CustomUser
 from .utils import send_verification_email
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.hashers import make_password , check_password
 
 User = get_user_model()
 
@@ -26,25 +27,16 @@ class RegisterUserView(generics.CreateAPIView):
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
             verification_code = str(random.randint(1000, 9999))
-            user.verification_code = verification_code
+            
+            # Hash the verification code
+            hashed_code = make_password(verification_code)
+            user.verification_code = hashed_code
             print(verification_code)
             user.save()
             send_verification_email(user.username, verification_code)
             return Response({'message': 'User registered. Check your email for verification code.', 'user': user.id}, status=status.HTTP_201_CREATED)
-
-        except serializers.ValidationError as e:
-            error_messages = e.detail
-            response_errors = {}
-            for field, messages in error_messages.items():
-                response_errors[field] = messages[0] 
-
-            return Response({'error': response_errors}, status=status.HTTP_400_BAD_REQUEST)
-
         except Exception as e:
-            # Log any other exceptions
-            print(f"Exception: {str(e)}")
-
-            # Return a generic error message
+            print('Error:', e)
             return Response({'error': 'An error occurred during registration. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyEmailView(generics.GenericAPIView):
@@ -64,25 +56,23 @@ class VerifyEmailView(generics.GenericAPIView):
             user_id = int(serializer.validated_data['user_id'])
             
             user = CustomUser.objects.get(id=user_id)
-            user_verification_code = str(user.verification_code).strip()
-            print("otp",user.verification_code, verification_code)
-            if user.verification_code != verification_code:
+            
+            # Verify the OTP
+            if not check_password(verification_code, user.verification_code):
                 print('Invalid verification code:', verification_code)
                 return Response({'error': 'Invalid verification code.'}, status=status.HTTP_400_BAD_REQUEST)
+            
             if user.email_verified:
                 print('Email already verified for user:', user_id)
                 return Response({'message': 'Email is already verified.'}, status=status.HTTP_400_BAD_REQUEST)
-            if user.verification_code == verification_code:
-                user.email_verified = True
-                user.save()
-                print('Email verified for user:', user_id)
+            
+            user.email_verified = True
+            user.save()
+            print('Email verified for user:', user_id)
             return Response({'message': 'Email verified successfully. Please login'}, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             print('User not found:', user_id)
             return Response({'error': 'User not found.'}, status=status.HTTP_400_BAD_REQUEST)
-        except serializers.ValidationError as e:
-            print('Validation error:', e.detail)
-            return Response({'error': e.detail}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             print('Exception:', e)
             return Response({'error': 'An error occurred during email verification. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -124,63 +114,78 @@ class AdminTokenObtainPairView(TokenObtainPairView):
 
 class ForgotPassword(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
         try:
-            print("forgotpassword")
             email = request.data.get('email')
-            user = CustomUser.objects.get(username=email)
+            user = CustomUser.objects.filter(username=email).first()
             if user:
                 verification_code = str(random.randint(1000, 9999))
-                user.verification_code = verification_code
+                
+                # Hash the verification code
+                hashed_code = make_password(verification_code)
+                user.verification_code = hashed_code
                 user.save()
+                
                 send_verification_email(user.username, verification_code)
                 return Response({'message': 'Email sent. Check your email for verification code.'}, status=status.HTTP_200_OK)
             else:
                 return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
-        except CustomUser.DoesNotExist:
-            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class ForgotPasswordOTP(APIView):
     permission_classes = [AllowAny]
-    def post(self,request):
+
+    def post(self, request):
         try:
-            print("forgotpasswordotp")
             email = request.data.get('email')
             otp = request.data.get('otp')
-            user = CustomUser.objects.get(username=email)
+            user = CustomUser.objects.filter(username=email).first()
             if user:
-                if user.verification_code == otp:
-                    return Response({"message":"Otp is verified , Please reset the password"},status=status.HTTP_200_OK)
+                # Verify the OTP
+                if check_password(otp, user.verification_code):
+                    return Response({"message": "OTP is verified. Please reset the password"}, status=status.HTTP_200_OK)
                 else:
-                    return Response({"error":"Otp is invalid, Try Again"},status=status.HTTP_404_NOT_FOUND)
+                    return Response({"error": "OTP is invalid. Try again"}, status=status.HTTP_400_BAD_REQUEST)
             else:
-                return Response({"error":"User not found"},status=status.HTTP_404_NOT_FOUND)
-        except CustomUser.DoesNotExist:
-            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class ResetPassword(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
         try:
             email = request.data.get('email')
             otp = request.data.get('otp')
             new_password = request.data.get('new_password')
 
+            # Ensure all required fields are provided
+            if not all([email, otp, new_password]):
+                return Response({"error": "Email, OTP, and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Retrieve the user by email
             user = CustomUser.objects.get(username=email)
-            if user and user.verification_code == otp:
+
+            # Validate OTP using check_password
+            if check_password(otp, user.verification_code):
                 # Validate the new password
                 serializer = UserSerializer()
                 try:
                     validated_password = serializer.validate_password(new_password)
                 except serializers.ValidationError as e:
                     return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
+
+                # Set the new password and save the user
                 user.set_password(validated_password)
                 user.save()
-                return Response({"message": "Password reset is successful"}, status=status.HTTP_200_OK)
+
+                return Response({"message": "Password reset successful"}, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Invalid OTP or email"}, status=status.HTTP_400_BAD_REQUEST)
+
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
