@@ -64,8 +64,9 @@ class PostDetailView(APIView):
 class Comments(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, post_id):
+    def get(self, request, id):
         try:
+            post_id = id
             comments = Comment.objects.filter(post__id=post_id)
             serializer = CommentSerializer(comments, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -74,8 +75,10 @@ class Comments(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def post(self, request, post_id):
+    def post(self, request, id):
         try:
+            post_id = id
+            print(request.data, post_id)
             post = Post.objects.get(id=post_id)
             data = request.data
             data['post'] = post.id
@@ -89,7 +92,16 @@ class Comments(APIView):
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            print(e)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def delete(self, request,id):
+        comment_id = id
+        comment = get_object_or_404(Comment, id=comment_id)
+        if comment.user == request.user:
+            comment.delete()
+            return Response({"message": "Comment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"error": "You do not have permission to delete this comment"}, status=status.HTTP_403_FORBIDDEN)
 
 class LikePost(APIView):
     permission_classes = [IsAuthenticated]

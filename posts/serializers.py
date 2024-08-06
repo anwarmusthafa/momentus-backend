@@ -37,13 +37,16 @@ class PostSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     momentus_user_name = serializers.SerializerMethodField()
     profile_picture = serializers.SerializerMethodField()
+    commented_by = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'post', 'comment','is_blocked', 'created_at', 'updated_at', 'momentus_user_name', 'profile_picture']
+        fields = ['id', 'user', 'post', 'comment', 'created_at', 'updated_at', 'momentus_user_name', 'profile_picture', 'commented_by']
 
     def get_momentus_user_name(self, obj):
         return obj.user.momentus_user_name
+    def get_commented_by(self, obj):
+        return obj.user.id
 
     def get_profile_picture(self, obj):
         request = self.context.get('request')

@@ -230,7 +230,7 @@ class SearchUser(APIView):
         if not query:
             return Response({"error": "Invalid query"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            users = CustomUser.objects.filter(momentus_user_name__icontains=query)
+            users = CustomUser.objects.filter(momentus_user_name__icontains=query)[:5]
             serializer = UserSerializer(users, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
