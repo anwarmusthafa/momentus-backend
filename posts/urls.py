@@ -8,6 +8,7 @@ urlpatterns = [
     path('post-details/<int:id>/', PostDetailView.as_view(), name='post_details'),
     path('create-post/', PostAPI.as_view(), name='create_post'),
     path('delete-post/<int:id>/', PostAPI.as_view(), name='delete_post'),
+    path('edit-post/<int:id>/', PostAPI.as_view(), name='delete_post'),
     path('like-post/<int:post_id>/', LikePost.as_view(), name='like_post'),
     path('unlike-post/<int:post_id>/', UnLikePost.as_view(), name='like_post'),
     path('explore/', ExploreView.as_view(), name='explore'),

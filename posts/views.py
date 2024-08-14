@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated , AllowAny
 from django.shortcuts import get_object_or_404
 from django.db.models import Count
 from itertools import chain
+from rest_framework.exceptions import ValidationError
 
 class PostAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -23,6 +24,25 @@ class PostAPI(APIView):
             return Response({"message": "Post deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         else:
             return Response({"error": "You do not have permission to delete this post"}, status=status.HTTP_403_FORBIDDEN)
+    def patch(self, request, id):
+        try:
+            post = get_object_or_404(Post, id=id)
+            if post.user == request.user:
+                caption = request.data.get('caption')
+                if caption:
+                    post.caption = caption
+                post.save()
+                serializer = PostSerializer(post)
+                return Response("Post updated successfully", status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "You do not have permission to update this post"}, status=status.HTTP_403_FORBIDDEN)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": "An error occurred: " + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
 class MyPosts(APIView):
     permission_classes = [IsAuthenticated]
