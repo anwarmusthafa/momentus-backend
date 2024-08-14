@@ -67,7 +67,7 @@ class Comments(APIView):
     def get(self, request, id):
         try:
             post_id = id
-            comments = Comment.objects.filter(post__id=post_id)
+            comments = Comment.objects.filter(post__id=post_id, parent__isnull=True)
             serializer = CommentSerializer(comments, many=True, context={'request': request})
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Comment.DoesNotExist:
@@ -78,30 +78,39 @@ class Comments(APIView):
     def post(self, request, id):
         try:
             post_id = id
-            print(request.data, post_id)
-            post = Post.objects.get(id=post_id)
             data = request.data
-            data['post'] = post.id
+            data['post'] = post_id
             data['user'] = request.user.id
-
+            parent_comment_id = data.get('parent', None)
+            
+            if parent_comment_id:
+                parent_comment = Comment.objects.get(id=parent_comment_id)
+                data['parent'] = parent_comment.id
+            
             serializer = CommentSerializer(data=data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response("Comment created successfully", status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
             return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Comment.DoesNotExist:
+            return Response({"error": "Parent comment not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            print(e)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    def delete(self, request,id):
-        comment_id = id
-        comment = get_object_or_404(Comment, id=comment_id)
-        if comment.user == request.user:
-            comment.delete()
-            return Response({"message": "Comment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-        else:
-            return Response({"error": "You do not have permission to delete this comment"}, status=status.HTTP_403_FORBIDDEN)
+
+    def delete(self, request, id):
+        try:
+            comment = Comment.objects.get(id=id)
+            if comment.user == request.user or comment.post.user == request.user:
+                comment.delete()
+                return Response({"message": "Comment deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response({"error": "You do not have permission to delete this comment"}, status=status.HTTP_403_FORBIDDEN)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class LikePost(APIView):
     permission_classes = [IsAuthenticated]

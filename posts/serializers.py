@@ -38,21 +38,31 @@ class CommentSerializer(serializers.ModelSerializer):
     momentus_user_name = serializers.SerializerMethodField()
     profile_picture = serializers.SerializerMethodField()
     commented_by = serializers.SerializerMethodField()
+    comment_post_user_id = serializers.SerializerMethodField()
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'post', 'comment', 'created_at', 'updated_at', 'momentus_user_name', 'profile_picture', 'commented_by']
+        fields = ['id', 'user', 'post', 'comment', 'parent', 'created_at', 'updated_at', 'momentus_user_name', 'profile_picture', 'commented_by', 'comment_post_user_id', 'replies']
 
     def get_momentus_user_name(self, obj):
         return obj.user.momentus_user_name
+
     def get_commented_by(self, obj):
         return obj.user.id
+
+    def get_comment_post_user_id(self, obj):
+        return obj.post.user.id
 
     def get_profile_picture(self, obj):
         request = self.context.get('request')
         if obj.user.profile_picture:
             return request.build_absolute_uri(obj.user.profile_picture.url)
         return None
+
+    def get_replies(self, obj):
+        replies = obj.replies.all()
+        return CommentSerializer(replies, many=True, context=self.context).data
 
 class LikeSerializer(serializers.ModelSerializer):
     class Meta:

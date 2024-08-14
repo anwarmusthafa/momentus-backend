@@ -11,6 +11,7 @@ from .utils import send_verification_email
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import make_password , check_password
+from django.contrib.auth import authenticate
 
 User = get_user_model()
 
@@ -85,7 +86,12 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
                 'username': attrs.get('username'),
                 'password': attrs.get('password')
             }
-            user = CustomUser.objects.filter(username=credentials['username']).first()
+            user = authenticate(
+                request=None,  # You can pass a request object here if needed
+                username=credentials['username'],
+                password=credentials['password']
+            )
+
             if user is None:
                 print('User not found:', credentials['username'])
                 raise serializers.ValidationError('Invalid username or password.')
