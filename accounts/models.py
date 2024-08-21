@@ -28,5 +28,5 @@ class CustomUser(AbstractUser):
         related_query_name='customuser'
     )
     def __str__(self):
-        return self.username if self.username else 'No Username'
+        return f"{self.username}+{self.id}"
     
