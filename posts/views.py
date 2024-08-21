@@ -163,7 +163,6 @@ class UnLikePost(APIView):
 
 class ExploreView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         try:
             # Get popular posts (e.g., most liked) excluding blocked posts

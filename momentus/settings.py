@@ -50,17 +50,21 @@ SIMPLE_JWT = {
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'accounts',
     'rest_framework',
     'corsheaders',
     'posts',
-    'admin_app'
+    'admin_app',
+    'chat',
+    'channels',
 ]
 
 
@@ -96,7 +100,20 @@ TEMPLATES = [
     },
 ]
 
+ASGI_APPLICATION = 'momentus.asgi.application'
 WSGI_APPLICATION = 'momentus.wsgi.application'
+
+
+# settings.py
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6380)],
+        },
+    },
+}
+
 
 
 # Database
