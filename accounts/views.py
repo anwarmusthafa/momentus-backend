@@ -5,8 +5,8 @@ from django.contrib.auth import get_user_model
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer
-from .models import CustomUser
+from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FollowSerializer
+from .models import CustomUser , Follow
 from .utils import send_verification_email
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
@@ -241,6 +241,48 @@ class SearchUser(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+User = get_user_model()
 
+class FollowAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        followed_user_id = request.data.get('followed_user')
+        user = request.user
+
+        if not followed_user_id:
+            return Response({'error': 'followed_user is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            followed_user = User.objects.get(id=followed_user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Check if already followed
+        if Follow.objects.filter(user=user, followed_user=followed_user).exists():
+            return Response({'error': 'Already following this user'}, status=status.HTTP_400_BAD_REQUEST)
+
+        follow = Follow(user=user, followed_user=followed_user)
+        follow.save()
+        serializer = FollowSerializer(follow)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, *args, **kwargs):
+        followed_user_id = request.data.get('followed_user')
+        user = request.user
+
+        if not followed_user_id:
+            return Response({'error': 'followed_user is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            followed_user = User.objects.get(id=followed_user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            follow = Follow.objects.get(user=user, followed_user=followed_user)
+            follow.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Follow.DoesNotExist:
+            return Response({'error': 'Not following this user'}, status=status.HTTP_400_BAD_REQUEST)
 
     

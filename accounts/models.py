@@ -29,4 +29,32 @@ class CustomUser(AbstractUser):
     )
     def __str__(self):
         return f"{self.username}+{self.id}"
+# accounts/models.py
+
+
+from django.conf import settings
+
+class Follow(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='following', on_delete=models.CASCADE)
+    followed_user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='followers', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'followed_user'],
+                name='unique_follow'
+            ),
+            models.UniqueConstraint(
+                fields=['followed_user', 'user'],
+                name='unique_reverse_follow'
+            )
+        ]
+        verbose_name = 'Follow'
+        verbose_name_plural = 'Follows'
+
+    def __str__(self):
+        return f"{self.user} follows {self.followed_user}"
+
+
     
