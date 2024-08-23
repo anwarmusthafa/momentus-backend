@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Count
 from itertools import chain
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Count
 
 class PostAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -118,6 +120,22 @@ class Comments(APIView):
             return Response({"error": "Parent comment not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def patch(self, request, id):
+        try:
+            comment = Comment.objects.get(id=id)
+            if comment.user == request.user:
+                data = request.data
+                serializer = CommentSerializer(comment, data=data, partial=True, context={'request': request})
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "You do not have permission to edit this comment"}, status=status.HTTP_403_FORBIDDEN)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, id):
         try:
@@ -161,25 +179,31 @@ class UnLikePost(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ExplorePagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class ExploreView(APIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = ExplorePagination
+
     def get(self, request):
         try:
-            # Get popular posts (e.g., most liked) excluding blocked posts
-            popular_posts = Post.objects.filter(is_blocked=False).annotate(like_count=Count('like')).order_by('-like_count')[:10]
+            # Fetch posts, ordering by like count (popularity) and then by creation date (recency)
+            posts = Post.objects.filter(is_blocked=False).annotate(
+                like_count=Count('like')
+            ).order_by('-like_count', '-created_at')
 
-            # Get latest posts excluding blocked posts
-            latest_posts = Post.objects.filter(is_blocked=False).order_by('-created_at')[:10]
-
-            # Combine the two querysets and remove duplicates
-            combined_posts = list(chain(popular_posts, latest_posts))
-            combined_posts = list({post.id: post for post in combined_posts}.values())[:20]  # Limit to 20 posts
-
-            serializer = PostSerializer(combined_posts, many=True, context={'request': request})
-            return Response(serializer.data)
+            # Paginate posts at the database level to fetch only 20 posts at a time
+            paginator = self.pagination_class()
+            paginated_posts = paginator.paginate_queryset(posts, request)
+            serializer = PostSerializer(paginated_posts, many=True, context={'request': request})
+            return paginator.get_paginated_response(serializer.data)
         except Exception as e:
             print(f"Error in ExploreView: {str(e)}")
             return Response({"error": "An error occurred while processing the request."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     
 

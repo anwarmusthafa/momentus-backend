@@ -244,6 +244,8 @@ class SearchUser(APIView):
 User = get_user_model()
 
 class FollowAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
     def post(self, request, *args, **kwargs):
         followed_user_id = request.data.get('followed_user')
         user = request.user
@@ -284,5 +286,20 @@ class FollowAPIView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Follow.DoesNotExist:
             return Response({'error': 'Not following this user'}, status=status.HTTP_400_BAD_REQUEST)
+class FollowingList(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        following = Follow.objects.filter(user=user)
+        serializer = FollowSerializer(following, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class FollowersList(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        followers = Follow.objects.filter(followed_user=user)
+        serializer = FollowSerializer(followers, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     
