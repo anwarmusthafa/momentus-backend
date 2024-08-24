@@ -57,14 +57,16 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
 
+    # Custom apps
     'accounts',
     'rest_framework',
     'corsheaders',
     'posts',
     'admin_app',
-    'chat',
-    'channels',
+    'realtime',
+    
 ]
 
 

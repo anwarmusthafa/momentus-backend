@@ -7,13 +7,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('chat', '0006_alter_chatmessage_room'),
+        ('realtime', '0006_alter_chatmessage_room'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='chatmessage',
             name='room',
-            field=models.ForeignKey(default=0, on_delete=django.db.models.deletion.CASCADE, related_name='chat_messages', to='chat.chatroom'),
+            field=models.ForeignKey(default=0, on_delete=django.db.models.deletion.CASCADE, related_name='chat_messages', to='realtime.chatroom'),
         ),
     ]

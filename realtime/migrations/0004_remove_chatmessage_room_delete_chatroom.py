@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('chat', '0003_chatroom_chatmessage_room'),
+        ('realtime', '0003_chatroom_chatmessage_room'),
     ]
 
     operations = [

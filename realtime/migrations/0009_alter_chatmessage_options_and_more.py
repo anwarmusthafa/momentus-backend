@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('chat', '0008_alter_chatmessage_room'),
+        ('realtime', '0008_alter_chatmessage_room'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -50,7 +50,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='chatmessage',
             name='chat_room',
-            field=models.ForeignKey(default=0, on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='chat.chatroom'),
+            field=models.ForeignKey(default=0, on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='realtime.chatroom'),
         ),
         migrations.AddField(
             model_name='chatmessage',
@@ -87,13 +87,13 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('joined_at', models.DateTimeField(auto_now_add=True)),
-                ('chat_room', models.ForeignKey(blank=True, default=0, null=True, on_delete=django.db.models.deletion.CASCADE, to='chat.chatroom')),
+                ('chat_room', models.ForeignKey(blank=True, default=0, null=True, on_delete=django.db.models.deletion.CASCADE, to='realtime.chatroom')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
         ),
         migrations.AddField(
             model_name='chatroom',
             name='participants',
-            field=models.ManyToManyField(related_name='chat_rooms', through='chat.ChatParticipant', to=settings.AUTH_USER_MODEL),
+            field=models.ManyToManyField(related_name='chat_rooms', through='realtime.ChatParticipant', to=settings.AUTH_USER_MODEL),
         ),
     ]

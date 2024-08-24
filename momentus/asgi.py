@@ -1,17 +1,17 @@
-# your_project_name/asgi.py
 import os
 from django.core.asgi import get_asgi_application
-from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
-import chat.routing
+from channels.auth import AuthMiddlewareStack
+import realtime.routing
+from realtime.middleware import JWTAuthMiddleware
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project_namez.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'momentus.settings')
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
+    "websocket": JWTAuthMiddleware(
         URLRouter(
-            chat.routing.websocket_urlpatterns
+            realtime.routing.websocket_urlpatterns
         )
     ),
 })
