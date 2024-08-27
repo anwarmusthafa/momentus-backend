@@ -38,26 +38,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         print(f"Received message: {message} {sender_id} {chat_room_id}")
 
-        # If the sender is the current user, don't send the message back to them
+        # Get sender info and save the message to the database
         sender_info = await self.get_user_info_by_id(sender_id)
         saved_message = await self.save_message_to_db(chat_room_id, sender_id, message)
-        if sender_id == self.user.id:
-            return  # Ignore the message sent by the user
-
-        # Get sender info and save the message to the database
         
+        # Save the message to the database but don't send it back to the sender
+        if int(sender_id) != self.user.id:
+            print("Sending message to room group", sender_id, self.user.id)
+            # Send the message to the room group only if the sender is not the current user
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'message': message,
+                    'sender': sender_info,
+                    'message_id': saved_message['id'],
+                    'timestamp': saved_message['timestamp']
+                }
+            )
 
-        # Send the message to the room group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                'type': 'chat_message',
-                'message': message,
-                'sender': sender_info,
-                'message_id': saved_message['id'],
-                'timestamp': saved_message['timestamp']
-            }
-        )
 
     async def chat_message(self, event):
         message = event['message']
