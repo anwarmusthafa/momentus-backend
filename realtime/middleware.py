@@ -24,17 +24,13 @@ class JWTAuthMiddleware(BaseMiddleware):
             try:
                 # Validate the JWT token
                 access_token = AccessToken(token)
-                print(f"Decoded token: {access_token}")
-
                 user_id = access_token.get("user_id")
                 user = await get_user(user_id)
                 print(f"User retrieved: {user}")
 
                 if not user.email_verified:
-                    print("Email is not verified.")
                     scope["user"] = AnonymousUser()
                 elif user.is_blocked:
-                    print("User is blocked by Admin.")
                     scope["user"] = AnonymousUser()
                 else:
                     scope["user"] = user

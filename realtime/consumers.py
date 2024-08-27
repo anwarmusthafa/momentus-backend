@@ -11,8 +11,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Extract user from scope (set by the JWTAuthMiddleware)
         self.user = self.scope['user']
-        print(self.user, "user")
-
+       
         # If user is authenticated, allow WebSocket connection
         if self.user.is_authenticated:
             await self.channel_layer.group_add(
@@ -43,19 +42,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         saved_message = await self.save_message_to_db(chat_room_id, sender_id, message)
         
         # Save the message to the database but don't send it back to the sender
-        if int(sender_id) != self.user.id:
-            print("Sending message to room group", sender_id, self.user.id)
-            # Send the message to the room group only if the sender is not the current user
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'message': message,
-                    'sender': sender_info,
-                    'message_id': saved_message['id'],
-                    'timestamp': saved_message['timestamp']
-                }
-            )
+        
+        print("Sending message to room group", sender_id, self.user.id)
+        # Send the message to the room group only if the sender is not the current user
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'chat_message',
+                'message': message,
+                'sender': sender_info,
+                'message_id': saved_message['id'],
+                'timestamp': saved_message['timestamp']
+            }
+        )
 
 
     async def chat_message(self, event):

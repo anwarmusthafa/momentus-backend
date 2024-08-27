@@ -23,7 +23,7 @@ class ChatParticipant(models.Model):
     Model to represent participants in a chat room.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, null=True, blank=True, default=0)
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, null=True, blank=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     # is_admin = models.BooleanField(default=False)  # In case of group chat, some users can be admins
 
@@ -34,7 +34,7 @@ class ChatMessage(models.Model):
     """
     Model to represent messages sent within a chat room.
     """
-    chat_room = models.ForeignKey(ChatRoom, related_name='messages', on_delete=models.CASCADE, default=0)
+    chat_room = models.ForeignKey(ChatRoom, related_name='messages', on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()  # Message content (text)
     image = models.ImageField(upload_to='chat_images/', null=True, blank=True)  # Optional image

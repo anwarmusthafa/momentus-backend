@@ -1,17 +1,16 @@
 from rest_framework import serializers
 from .models import ChatRoom, ChatParticipant, ChatMessage
 from accounts.serializers import UserSerializer
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
-class ChatParticipantSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)  # Make sure UserSerializer is correctly defined
-
+class ChatParticipantSerializer(serializers.ModelSerializer): # Make sure UserSerializer is correctly defined
     class Meta:
-        model = ChatParticipant
-        fields = ['user', 'chat_room', 'joined_at']
+        model = User
+        fields = ['id',  'momentus_user_name', 'profile_picture']
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     participants = ChatParticipantSerializer(many=True, read_only=True)
-
     class Meta:
         model = ChatRoom
         fields = ['id', 'name', 'is_group', 'created_at', 'participants']
