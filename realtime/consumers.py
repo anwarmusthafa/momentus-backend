@@ -31,7 +31,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        message = text_data_json.get('message',)
+        message = text_data_json.get('message')
         sender_id = text_data_json.get('sender')
         chat_room_id = self.room_id
 
@@ -41,10 +41,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         sender_info = await self.get_user_info_by_id(sender_id)
         saved_message = await self.save_message_to_db(chat_room_id, sender_id, message)
         
-        # Save the message to the database but don't send it back to the sender
-        
+        # Check if the message was successfully saved
+        if not saved_message.get('id'):
+            print(f"Message not saved, error: {saved_message.get('error')}")
+            return  # Don't send the message to the WebSocket if saving failed
+
         print("Sending message to room group", sender_id, self.user.id)
-        # Send the message to the room group only if the sender is not the current user
+        
+        # Send the message to the room group
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -55,7 +59,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': saved_message['timestamp']
             }
         )
-
 
     async def chat_message(self, event):
         message = event['message']
@@ -88,10 +91,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message_to_db(self, room_id, sender_id, message):
+        print("Saving message to db, room: ", room_id, sender_id, message)
         try:
-            print("Saving message to db")
-            chat_room = ChatRoom.objects.get(id=room_id)
-            sender = CustomUser.objects.get(id=sender_id)
+            # Fetch chat room and sender, handle exceptions separately
+            try:
+                chat_room = ChatRoom.objects.get(id=room_id)
+            except ChatRoom.DoesNotExist:
+                print(f"ChatRoom with id {room_id} does not exist")
+                return {'id': None, 'timestamp': '', 'error': 'Chat room not found'}
+
+            try:
+                sender = CustomUser.objects.get(id=sender_id)
+            except CustomUser.DoesNotExist:
+                print(f"CustomUser with id {sender_id} does not exist")
+                return {'id': None, 'timestamp': '', 'error': 'Sender not found'}
+
+            # Create the message after confirming room and sender exist
             chat_message = ChatMessage.objects.create(
                 chat_room=chat_room,
                 sender=sender,
@@ -102,5 +117,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'id': chat_message.id,
                 'timestamp': chat_message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
             }
-        except ChatRoom.DoesNotExist:
-            return {'id': None, 'timestamp': ''}
+
+        except Exception as e:
+            print(f"An error occurred while saving message: {str(e)}")
+            return {'id': None, 'timestamp': '', 'error': 'An error occurred'}
