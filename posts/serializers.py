@@ -2,22 +2,15 @@ from rest_framework import serializers
 from .models import Post , Comment , Like
 
 class PostSerializer(serializers.ModelSerializer):
-    image_url = serializers.SerializerMethodField()
     momentus_user_name = serializers.SerializerMethodField()
     user_profile_picture = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
-        fields = '__all__'
+        fields = ['id', 'caption', 'image', 'created_at','momentus_user_name', 'user_profile_picture']
         extra_kwargs = {
             'user': {'read_only': True}
         }
-
-    def get_image_url(self, obj):
-        request = self.context.get('request')
-        if request is not None:
-            return request.build_absolute_uri(obj.image.url)
-        return obj.image.url
 
     def get_momentus_user_name(self, obj):
         return obj.user.momentus_user_name
@@ -43,7 +36,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'post', 'comment', 'parent', 'created_at', 'updated_at', 'momentus_user_name', 'profile_picture', 'commented_by', 'comment_post_user_id', 'replies']
+        fields = ['id', 'user', 'post', 'comment', 'parent', 'created_at','momentus_user_name', 'profile_picture', 'commented_by','comment_post_user_id', 'replies']
 
     def get_momentus_user_name(self, obj):
         return obj.user.momentus_user_name
