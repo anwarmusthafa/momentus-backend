@@ -10,7 +10,8 @@ from itertools import chain
 from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Count
-
+from realtime.utils import send_notification
+from realtime.models import Notification
 class PostAPI(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
@@ -31,11 +32,14 @@ class PostAPI(APIView):
             post = get_object_or_404(Post, id=id)
             if post.user == request.user:
                 caption = request.data.get('caption')
-                if caption:
+                print("caption",caption)
+                if caption is not None:
                     post.caption = caption
-                post.save()
-                serializer = PostSerializer(post)
-                return Response("Post updated successfully", status=status.HTTP_200_OK)
+                    post.save()
+                    serializer = PostSerializer(post)
+                    return Response("Post updated successfully", status=status.HTTP_200_OK)
+                else:
+                    return Response({"error": "Caption cannot be empty"}, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({"error": "You do not have permission to update this post"}, status=status.HTTP_403_FORBIDDEN)
         except Post.DoesNotExist:
@@ -104,6 +108,7 @@ class Comments(APIView):
             data['post'] = post_id
             data['user'] = request.user.id
             parent_comment_id = data.get('parent', None)
+            post = Post.objects.get(id=post_id)
             
             if parent_comment_id:
                 parent_comment = Comment.objects.get(id=parent_comment_id)
@@ -112,6 +117,9 @@ class Comments(APIView):
             serializer = CommentSerializer(data=data, context={'request': request})
             if serializer.is_valid():
                 serializer.save()
+                content = f"{request.user.momentus_user_name} commented on your post. {serializer.data['comment']}"
+                notification = Notification.objects.create(content=content, user=post.user, notification_type="comment")
+                send_notification(post.user.id, content, "comment")
                 return Response("Comment created successfully", status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
@@ -128,7 +136,7 @@ class Comments(APIView):
                 serializer = CommentSerializer(comment, data=data, partial=True, context={'request': request})
                 if serializer.is_valid():
                     serializer.save()
-                    return Response(serializer.data, status=status.HTTP_200_OK)
+                    return Response({"message": "Comment updated successfully"}, status=status.HTTP_200_OK)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({"error": "You do not have permission to edit this comment"}, status=status.HTTP_403_FORBIDDEN)
@@ -162,6 +170,13 @@ class LikePost(APIView):
             serializer = LikeSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
+                content = f"{request.user.username} liked your post!"
+                notification = Notification.objects.create(
+                user=post.user,
+                content=content,
+                notification_type='like'
+                )
+                send_notification(post.user.id, notification.content, notification.notification_type)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:

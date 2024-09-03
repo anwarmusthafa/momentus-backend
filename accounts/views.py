@@ -38,7 +38,7 @@ class RegisterUserView(generics.CreateAPIView):
             return Response({'message': 'User registered. Check your email for verification code.', 'user': user.id}, status=status.HTTP_201_CREATED)
         except Exception as e:
             print('Error:', e)
-            return Response({'error': 'An error occurred during registration. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VerifyEmailView(generics.GenericAPIView):
     permission_classes = [AllowAny]
@@ -230,7 +230,6 @@ class UserProfile(APIView):
 
 class SearchUser(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         query = request.GET.get('query')
         if not query:

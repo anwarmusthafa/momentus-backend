@@ -46,3 +46,22 @@ class ChatMessage(models.Model):
 
     class Meta:
         ordering = ['timestamp']  # Ensure messages are retrieved in chronological order
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('like', 'Like'),
+        ('comment', 'Comment'),
+        ('friend_request', 'Friend Request'),
+        ('admin', 'Admin'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    content = models.TextField()
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Notification for {self.user.username} - {self.notification_type}"
+

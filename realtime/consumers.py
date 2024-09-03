@@ -11,8 +11,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Extract user from scope (set by the JWTAuthMiddleware)
         self.user = self.scope['user']
-       
-        # If user is authenticated, allow WebSocket connection
+
+        # Check if room exists and if user is a participant
+        room = await self.get_chat_room(self.room_id)
+
+        if room is None:
+            # Room doesn't exist, close the connection
+            await self.close()
+            return
+
+        self.room = room
+        participants = await self.get_room_participants(self.room)
+
+        if self.user not in participants:
+            print("User is not part of the chat room")
+            # User is not part of the chat room, close the connection
+            await self.close()
+            return
+
+        # If user is authenticated and part of the room, allow WebSocket connection
         if self.user.is_authenticated:
             await self.channel_layer.group_add(
                 self.room_group_name,
@@ -75,6 +92,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
         }))
 
     @database_sync_to_async
+    def get_chat_room(self, room_id):
+        try:
+            return ChatRoom.objects.get(id=room_id)
+        except ChatRoom.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def get_room_participants(self, room):
+        return list(room.participants.all())
+
+    @database_sync_to_async
     def get_user_info_by_id(self, user_id):
         try:
             user = CustomUser.objects.get(id=user_id)
@@ -94,17 +122,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print("Saving message to db, room: ", room_id, sender_id, message)
         try:
             # Fetch chat room and sender, handle exceptions separately
-            try:
-                chat_room = ChatRoom.objects.get(id=room_id)
-            except ChatRoom.DoesNotExist:
-                print(f"ChatRoom with id {room_id} does not exist")
-                return {'id': None, 'timestamp': '', 'error': 'Chat room not found'}
-
-            try:
-                sender = CustomUser.objects.get(id=sender_id)
-            except CustomUser.DoesNotExist:
-                print(f"CustomUser with id {sender_id} does not exist")
-                return {'id': None, 'timestamp': '', 'error': 'Sender not found'}
+            chat_room = ChatRoom.objects.get(id=room_id)
+            sender = CustomUser.objects.get(id=sender_id)
 
             # Create the message after confirming room and sender exist
             chat_message = ChatMessage.objects.create(
@@ -118,6 +137,48 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'timestamp': chat_message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
             }
 
+        except (ChatRoom.DoesNotExist, CustomUser.DoesNotExist) as e:
+            print(f"An error occurred: {str(e)}")
+            return {'id': None, 'timestamp': '', 'error': str(e)}
+
         except Exception as e:
             print(f"An error occurred while saving message: {str(e)}")
             return {'id': None, 'timestamp': '', 'error': 'An error occurred'}
+        
+
+
+class NotificationConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.group_name = f"notifications_{self.scope['user'].id}"
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        await self.channel_layer.group_send(
+            self.group_name,
+            {
+                'type': 'send_notification',
+                'message': data['message'],
+                'notification_type': data['notification_type']
+            }
+        )
+
+    async def send_notification(self, event):
+        message = event['message']
+        notification_type = event['notification_type']
+
+        await self.send(text_data=json.dumps({
+            'message': message,
+            'notification_type': notification_type
+        }))
+

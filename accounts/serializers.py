@@ -9,14 +9,13 @@ User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(max_length=None, allow_empty_file=False, use_url=True , required=False)
-    profile_picture_url = serializers.SerializerMethodField()
+    
 
     class Meta:
         model = User
         fields = [
             "id", "username", "full_name", "password", "momentus_user_name",
-            "is_prime", "bio", "email_verified", "verification_code","profile_picture",
-            "profile_picture_url", "is_blocked"
+            "is_prime", "bio","profile_picture",
         ]
         extra_kwargs = {
             "password": {"write_only": True}

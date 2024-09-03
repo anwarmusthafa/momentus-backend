@@ -54,10 +54,6 @@ class PersonalChatRoomView(APIView):
         
         # Return paginated response
         return paginator.get_paginated_response(serializer.data)
-        
-
-        serializer = ChatRoomSerializer(chat_room)
-        return Response(serializer.data, status=status.HTTP_200_OK)
     
 class CreateGroupChatView(APIView):
     permission_classes = [IsAuthenticated]
