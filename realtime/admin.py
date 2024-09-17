@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ChatMessage , ChatRoom, ChatParticipant
+from .models import ChatMessage , ChatRoom, ChatParticipant , Notification
 
 # Register your models here.
 class ChatRoomParticipantInline(admin.TabularInline):
@@ -16,3 +16,4 @@ class ChatRoomAdmin(admin.ModelAdmin):
 admin.site.register(ChatMessage)
 admin.site.register(ChatRoom, ChatRoomAdmin)
 admin.site.register(ChatParticipant)
+admin.site.register(Notification)

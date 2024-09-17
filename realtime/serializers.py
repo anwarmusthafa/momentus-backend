@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ChatRoom, ChatParticipant, ChatMessage
+from .models import ChatRoom, ChatParticipant, ChatMessage , Notification
 from accounts.serializers import UserSerializer
 from django.contrib.auth import get_user_model
 User = get_user_model()
@@ -28,3 +28,8 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = ['id', 'chat_room', 'sender', 'content', 'timestamp',]
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'user', 'content', 'notification_type', 'created_at']

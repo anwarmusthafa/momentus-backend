@@ -168,17 +168,44 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             self.group_name,
             {
                 'type': 'send_notification',
+                
                 'message': data['message'],
                 'notification_type': data['notification_type']
             }
         )
 
     async def send_notification(self, event):
-        message = event['message']
-        notification_type = event['notification_type']
-
-        await self.send(text_data=json.dumps({
-            'message': message,
-            'notification_type': notification_type
-        }))
+    # Extracting data from the event
+        message = event.get('message')
+        notification_type = event.get('notification_type')
+        sender = event.get('sender')
+        sender_image = event.get('sender_image')
+        post_id = event.get('post_id')
+        post_image = event.get('post_image')
+        comment_id = event.get('comment_id')
+        comment = event.get('comment')
+    
+        # Creating the response dictionary dynamically
+        response_data = {}
+    
+        if message is not None:
+            response_data['message'] = message
+        if sender is not None:
+            response_data['sender'] = sender
+        if sender_image is not None:
+            response_data['sender_image'] = sender_image
+        if post_id is not None:
+            response_data['post_id'] = post_id
+        if post_image is not None:
+            response_data['post_image'] = post_image
+        if comment_id is not None:
+            response_data['comment_id'] = comment_id
+        if comment is not None:
+            response_data['comment'] = comment
+        if notification_type is not None:
+            response_data['notification_type'] = notification_type
+    
+        # Send the response only if there's data to send
+        if response_data:
+            await self.send(text_data=json.dumps(response_data))
 

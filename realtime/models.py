@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
+
 class ChatRoom(models.Model):
     """
     Model to represent a chat room. This can be either personal (1-on-1) or group chat.
@@ -55,13 +56,12 @@ class Notification(models.Model):
         ('friend_request', 'Friend Request'),
         ('admin', 'Admin'),
     )
-
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications', null=True, blank=True)
+    post = models.ForeignKey('posts.Post', on_delete=models.CASCADE, related_name='notifications', null=True, blank=True)
     content = models.TextField()
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
 
+    created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Notification for {self.user.username} - {self.notification_type}"
-

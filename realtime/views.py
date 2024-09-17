@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
-from .models import ChatRoom, ChatParticipant, ChatMessage
-from .serializers import ChatRoomSerializer, ChatMessageSerializer
+from .models import ChatRoom, ChatParticipant, ChatMessage , Notification  
+from .serializers import ChatRoomSerializer, ChatMessageSerializer , NotificationSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Max
@@ -12,8 +12,8 @@ from django.db.models import Max
 User = get_user_model()
 
 class ChatPagination(PageNumberPagination):
-    page_size = 10  # Set to 10 results per page
-    page_size_query_param = 'page_size'  # Allow clients to override this using ?page_size=
+    page_size = 10 
+    page_size_query_param = 'page_size'
 
 class PersonalChatRoomView(APIView):
     permission_classes = [IsAuthenticated]
@@ -131,3 +131,24 @@ class GetChatroomsView(APIView):
         # Return paginated response
         return paginator.get_paginated_response(serializer.data)
 
+class NotificationPagination(PageNumberPagination):
+    page_size = 10  # Set to 10 results per page
+    page_size_query_param = 'page_size'  # Allow clients to override this using ?page_size=
+
+class NotificationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        notifications = Notification.objects.filter(user=user).order_by('-created_at')
+
+        # Initialize pagination
+        paginator = NotificationPagination()
+        paginated_notifications = paginator.paginate_queryset(notifications, request)
+        
+        # Serialize paginated data
+        serializer = NotificationSerializer(paginated_notifications, many=True, context={'request': request})
+        
+        # Return paginated response
+        return paginator.get_paginated_response(serializer.data)
+    

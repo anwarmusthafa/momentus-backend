@@ -118,7 +118,11 @@ class Comments(APIView):
             if serializer.is_valid():
                 serializer.save()
                 content = f"{request.user.momentus_user_name} commented on your post. {serializer.data['comment']}"
-                notification = Notification.objects.create(content=content, user=post.user, notification_type="comment")
+                notification = Notification.objects.create( content=content,
+                                                            user=post.user,
+                                                            sender=request.user,
+                                                            post=post,
+                                                            notification_type="comment")
                 send_notification(post.user.id, content, "comment")
                 return Response("Comment created successfully", status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -170,13 +174,21 @@ class LikePost(APIView):
             serializer = LikeSerializer(data=data)
             if serializer.is_valid():
                 serializer.save()
-                content = f"{request.user.username} liked your post!"
                 notification = Notification.objects.create(
                 user=post.user,
-                content=content,
+                sender = request.user,
+                post = post,
                 notification_type='like'
                 )
-                send_notification(post.user.id, notification.content, notification.notification_type)
+                send_notification(
+                    post.user.id, 
+                    notification.content, 
+                    notification.notification_type, 
+                    post.image.url,  # Pass image URL instead of the object
+                    request.user.momentus_user_name,
+                    post.user.profile_picture.url if post.user.profile_picture else None,  # Handle profile picture URL
+                    post_id,
+                )
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
