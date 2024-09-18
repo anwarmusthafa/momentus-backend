@@ -123,7 +123,7 @@ class Comments(APIView):
                                                             sender=request.user,
                                                             post=post,
                                                             notification_type="comment")
-                send_notification(post.user.id, content, "comment")
+                send_notification(user_id=post.user.id, sender = request.user.momentus_user_name, post_id=post.id, comment_id=serializer.data['id'], post_image=post.image.url, notification_type="comment")
                 return Response("Comment created successfully", status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Post.DoesNotExist:
