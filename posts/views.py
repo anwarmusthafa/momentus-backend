@@ -164,7 +164,6 @@ class Comments(APIView):
 
 class LikePost(APIView):
     permission_classes = [IsAuthenticated]
-
     def post(self, request, post_id):
         try:
             post = Post.objects.get(id=post_id)

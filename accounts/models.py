@@ -32,27 +32,25 @@ class CustomUser(AbstractUser):
         return f"{self.username}+{self.id}"
 # accounts/models.py
 
-class Friends(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='friendships', on_delete=models.CASCADE)
-    friend = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='friends', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
+class Friendship(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
+    )
+    user_one = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="friendship_initated")
+    user_two = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="friendship_recieved")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    declined_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'friend'],
-                name='unique_friendship'
-            ),
-            models.UniqueConstraint(
-                fields=['friend', 'user'],
-                name='unique_reverse_friendship'
-            )
-        ]
-        verbose_name = 'Friendship'
-        verbose_name_plural = 'Friendships'
+        unique_together = ('user_one', 'user_two')
 
     def __str__(self):
-        return f"{self.user} is friends with {self.friend}"
+        return f"{self.user_one.momentus_user_name} + {self.user_two.momentus_user_name}"
+    
 
 
     

@@ -5,13 +5,14 @@ from django.contrib.auth import get_user_model
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer
-from .models import CustomUser ,Friends
+from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer
+from .models import CustomUser ,Friendship
 from .utils import send_verification_email
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import make_password , check_password
 from django.contrib.auth import authenticate
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -240,8 +241,82 @@ class SearchUser(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-User = get_user_model()
 
+class FriendRequestAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request):
+        sender = request.user
+        receiver_id = request.data.get('receiver_id')
+
+        # Check if sender is trying to send a request to themselves
+        if sender.id == int(receiver_id):
+            return Response({"error": "You can't send a friend request to yourself"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            receiver = CustomUser.objects.get(id=receiver_id)
+
+            # Check if receiver is blocked
+            if receiver.is_blocked:
+                return Response({"error": "You can't send a friend request to a blocked user"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Try to create a new friendship request or get an existing one
+            friendship, created = Friendship.objects.get_or_create(
+                user_one=sender, 
+                user_two=receiver,
+                defaults={'status': 'pending'}
+            )
+
+            if not created:
+                # Check the status of an existing friendship request
+                if friendship.status == "pending":
+                    return Response({"error": "Friend request already sent"}, status=status.HTTP_400_BAD_REQUEST)
+                elif friendship.status == "accepted":
+                    return Response({"error": "Friend request already accepted"}, status=status.HTTP_400_BAD_REQUEST)
+                elif friendship.status == "declined":
+                    return Response({"error": "Friend request already declined"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Successfully created a new friend request
+            serializer = FriendshipSerializer(friendship)
+            return Response({"message": "Friend request sent successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
+
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            # Log the exception for debugging purposes
+            print(f"An error occurred: {e}")
+            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def put(self, request, pk=None):
+        try:
+            friendship = Friendship.objects.get(pk=pk)
+        except Friendship.DoesNotExist:
+            return Response({'detail': 'Friend request not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if friendship.user_two != request.user:
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        action = request.data.get('action')
+        if action == 'accept':
+            friendship.status = 'accepted'
+            friendship.responded_at = timezone.now()
+            friendship.save()
+            serializer = FriendshipSerializer(friendship)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        elif action == 'decline':
+            friendship.delete()
+            return Response({'detail': 'Friend request declined.'}, status=status.HTTP_200_OK)
+
+        return Response({'detail': 'Invalid action.'}, status=status.HTTP_400_BAD_REQUEST)
+
+class PendingFriendshipsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        pending_requests = Friendship.objects.filter(user_two=user, status='pending')
+        serializer = FriendshipSerializer(pending_requests, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     

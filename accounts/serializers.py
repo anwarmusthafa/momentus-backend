@@ -4,6 +4,7 @@ from rest_framework import serializers
 from django.core.exceptions import ValidationError
 import re
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Friendship
 
 User = get_user_model()
 
@@ -77,4 +78,8 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         return super().validate(attrs)
     
-    # accounts/serializers.py
+
+class FriendshipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Friendship
+        fields = '__all__'
