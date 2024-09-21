@@ -11,7 +11,8 @@ urlpatterns = [
     path('user-profile/<str:momentus_user_name>/', UserProfile.as_view(), name='user_profile'),
     path('search-user/', SearchUser.as_view(), name='search_user'),
     path('friendrequest/', FriendRequestAPIView.as_view(), name='friendship-create'),
-    path('friendrequest/<int:pk>/', FriendRequestAPIView.as_view(), name='friendship-update'),
+    path('friendrequest/<int:pk>/', FriendRequestAPIView.as_view(), name='friendship-create'),
     path('pending-friendrequests/', PendingFriendshipsAPIView.as_view(), name='pending-friendships'),
+    path('pending-friendrequests/<int:pk>/', PendingFriendshipsAPIView.as_view(), name='pending-friendships'),
     
 ]

@@ -38,18 +38,18 @@ class Friendship(models.Model):
         ('accepted', 'Accepted'),
         ('declined', 'Declined'),
     )
-    user_one = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="friendship_initated")
-    user_two = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="friendship_recieved")
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="friendship_initated")
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="friendship_recieved")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     requested_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
     declined_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        unique_together = ('user_one', 'user_two')
+        unique_together = ('sender', 'receiver')
 
     def __str__(self):
-        return f"{self.user_one.momentus_user_name} + {self.user_two.momentus_user_name}"
+        return f"{self.sender.momentus_user_name} + {self.receiver.momentus_user_name} + {self.id}"
     
 
 
