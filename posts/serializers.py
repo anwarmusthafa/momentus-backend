@@ -4,13 +4,12 @@ from .models import Post , Comment , Like
 class PostSerializer(serializers.ModelSerializer):
     momentus_user_name = serializers.SerializerMethodField()
     user_profile_picture = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    comment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
-        fields = ['id', 'caption', 'image', 'created_at','momentus_user_name', 'user_profile_picture']
-        extra_kwargs = {
-            'user': {'read_only': True}
-        }
+        fields = ['id', 'caption', 'image', 'created_at', 'momentus_user_name', 'user_profile_picture', 'like_count', 'comment_count']
 
     def get_momentus_user_name(self, obj):
         return obj.user.momentus_user_name
@@ -21,11 +20,20 @@ class PostSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.user.profile_picture.url)
         return None
 
+    def get_like_count(self, obj):
+        # Now we can directly use the related_name 'likes'
+        return obj.likes.count()
+
+    def get_comment_count(self, obj):
+        # Now we can directly use the related_name 'comments'
+        return obj.comments.count()
+
     def create(self, validated_data):
         request = self.context.get('request', None)
         if request and hasattr(request, 'user'):
             validated_data['user'] = request.user
         return super().create(validated_data)
+
 
 class CommentSerializer(serializers.ModelSerializer):
     momentus_user_name = serializers.SerializerMethodField()

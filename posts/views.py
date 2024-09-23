@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Post, Comment , Like
+from accounts.models import Friendship
 from .serializers import PostSerializer ,  CommentSerializer , LikeSerializer
 from rest_framework.permissions import IsAuthenticated , AllowAny 
 from django.shortcuts import get_object_or_404
@@ -12,6 +13,8 @@ from rest_framework.pagination import PageNumberPagination
 from django.db.models import Count
 from realtime.utils import send_notification
 from realtime.models import Notification
+from django.db.models import Q
+
 class PostAPI(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
@@ -213,7 +216,6 @@ class ExplorePagination(PageNumberPagination):
 class ExploreView(APIView):
     permission_classes = [IsAuthenticated]
     pagination_class = ExplorePagination
-
     def get(self, request):
         try:
             # Fetch posts, ordering by like count (popularity) and then by creation date (recency)
@@ -229,6 +231,46 @@ class ExploreView(APIView):
         except Exception as e:
             print(f"Error in ExploreView: {str(e)}")
             return Response({"error": "An error occurred while processing the request."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class HomeFeedAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Get the current logged-in user
+            user = request.user
+
+            # Fetch friend IDs where the current user is either the sender or receiver, and the status is 'accepted'
+            friends = Friendship.objects.filter(
+                Q(sender=user) | Q(receiver=user),
+                status='accepted'
+            ).values_list('sender_id', 'receiver_id')
+
+            # Extract friend IDs using set comprehension (exclude the current user's ID)
+            friend_ids = {friend_id for friend_pair in friends for friend_id in friend_pair if friend_id != user.id}
+
+            # Fetch the latest 20 posts from these friends, including related user data
+            posts = Post.objects.filter(user_id__in=friend_ids).select_related('user').order_by('-created_at')[:20]
+
+            # Check if there are no posts
+            if not posts:
+                return Response({"detail": "No posts available."}, status=204)
+
+            # Serialize the posts
+            serializer = PostSerializer(posts, many=True, context={"request": request})
+
+            # Return the serialized posts in the response
+            return Response(serializer.data, status=200)
+
+        except Friendship.DoesNotExist:
+            return Response({"error": "Friendship data not found."}, status=404)
+        
+        except Post.DoesNotExist:
+            return Response({"error": "No posts found."}, status=404)
+        
+        except Exception as e:
+            # Catch any other exceptions and log it if needed
+            return Response({"error": str(e)}, status=500)
 
 
     
