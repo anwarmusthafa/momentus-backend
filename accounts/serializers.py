@@ -5,18 +5,19 @@ from django.core.exceptions import ValidationError
 import re
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Friendship
+from django.db.models import Q
 
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(max_length=None, allow_empty_file=False, use_url=True , required=False)
-    
+    friends_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             "id", "username", "full_name", "password", "momentus_user_name",
-            "is_prime", "bio","profile_picture",
+            "is_prime", "bio","profile_picture","friends_count",
         ]
         extra_kwargs = {
             "password": {"write_only": True}
@@ -54,6 +55,10 @@ class UserSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             return request.build_absolute_uri(obj.profile_picture.url)
         return None
+    
+    def get_friends_count(self, obj):
+        user = self.context['request'].user
+        return Friendship.objects.filter(Q(sender=user) | Q(receiver=user), status="accepted").count()
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
@@ -83,3 +88,24 @@ class FriendshipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Friendship
         fields = '__all__'
+class FriendsListSerializer(serializers.ModelSerializer):
+    friend = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Friendship
+        fields = ['id', 'friend']
+
+    def get_friend(self, obj):
+        user = self.context['request'].user
+        # Check if the current user is the sender, return the receiver; otherwise, return the sender
+        if obj.sender == user:
+            friend = obj.receiver
+        else:
+            friend = obj.sender
+        
+        # Return the friend's data (id, profile picture, and username)
+        return {
+            'id': friend.id,
+            'username': friend.username,
+            'profile_picture': friend.profile_picture.url if friend.profile_picture else None,
+        }

@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer
+from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer ,FriendsListSerializer
 from .models import CustomUser ,Friendship
 from .utils import send_verification_email
 from rest_framework.views import APIView
@@ -15,6 +15,8 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from realtime.utils import send_notification
 from realtime.models import Notification
+from django.db.models import Q
+
 
 User = get_user_model()
 
@@ -360,5 +362,43 @@ class PendingFriendshipsAPIView(APIView):
 
         return Response({'detail': 'Invalid action.'}, status=status.HTTP_400_BAD_REQUEST)
 
+class MyFriendsApi(APIView):
+    permission_classes = [IsAuthenticated]
 
-    
+    def get(self, request):
+        user = request.user
+        try:
+            # Fetch all friendships where the user is either the sender or receiver
+            friends = Friendship.objects.filter(Q(sender=user) | Q(receiver=user), status="accepted")
+
+            # Serialize the data
+            serializer = FriendsListSerializer(friends, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Friendship.DoesNotExist:
+            return Response({"error": "Friendships not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            # Generic error handling
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def post(self, request, pk):
+        user = request.user
+        try:
+            # Try to fetch the friendship by primary key (pk)
+            friendship = Friendship.objects.get(pk=pk)
+
+            # Check if the current user is either the sender or receiver
+            if friendship.sender == user or friendship.receiver == user:
+                friendship.delete()
+                return Response("Unfriend successful", status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response({"error": "You are not authorized to delete this friendship."}, status=status.HTTP_403_FORBIDDEN)
+
+        except Friendship.DoesNotExist:
+            return Response({"error": "Friendship not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            # Catch any other unexpected errors
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)          
+
+
