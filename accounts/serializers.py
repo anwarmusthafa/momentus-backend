@@ -106,6 +106,25 @@ class FriendsListSerializer(serializers.ModelSerializer):
         # Return the friend's data (id, profile picture, and username)
         return {
             'id': friend.id,
-            'username': friend.username,
+            'username': friend.momentus_user_name,
+            'profile_picture': friend.profile_picture.url if friend.profile_picture else None,
+        }
+class UserFriendsListSeriailizer(serializers.ModelSerializer):
+    friend = serializers.SerializerMethodField()
+    class Meta:
+        model = Friendship
+        fields = ['id','friend']
+
+    def get_friend(self,obj):
+        user = self.context.get('user')
+
+        if obj.sender == user:
+            friend = obj.receiver
+        else:
+            friend = obj.sender
+        
+        return {
+            'id': friend.id,
+            'username': friend.momentus_user_name,
             'profile_picture': friend.profile_picture.url if friend.profile_picture else None,
         }

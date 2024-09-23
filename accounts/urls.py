@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import RegisterUserView, VerifyEmailView, ForgotPassword, ForgotPasswordOTP, ResetPassword , MyProfile , UserProfile, SearchUser , FriendRequestAPIView , PendingFriendshipsAPIView, MyFriendsApi
+from .views import RegisterUserView, VerifyEmailView, ForgotPassword, ForgotPasswordOTP, ResetPassword , MyProfile , UserProfile, SearchUser , FriendRequestAPIView , PendingFriendshipsAPIView, MyFriendsApi, UserFriendsList
 
 urlpatterns = [
     path('register/', RegisterUserView.as_view(), name='register'),
@@ -15,6 +15,7 @@ urlpatterns = [
     path('pending-friendrequests/', PendingFriendshipsAPIView.as_view(), name='pending-friendships'),
     path('pending-friendrequests/<int:pk>/', PendingFriendshipsAPIView.as_view(), name='pending-friendships'),
     path('my-friends-list/', MyFriendsApi.as_view(), name="my-friends-list"),
-    path("unfriend/<int:pk>/", MyFriendsApi.as_view(), name="unfriend")
+    path("unfriend/<int:pk>/", MyFriendsApi.as_view(), name="unfriend"),
+    path("other-friends-list/<int:user_id>/", UserFriendsList.as_view(), name="others-friends-list"),
     
 ]

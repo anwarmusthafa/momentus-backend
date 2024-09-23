@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer ,FriendsListSerializer
+from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer ,FriendsListSerializer, UserFriendsListSeriailizer 
 from .models import CustomUser ,Friendship
 from .utils import send_verification_email
 from rest_framework.views import APIView
@@ -399,6 +399,20 @@ class MyFriendsApi(APIView):
 
         except Exception as e:
             # Catch any other unexpected errors
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)          
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+class UserFriendsList(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self,request,user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+            friends = Friendship.objects.filter(Q(sender = user)|Q(receiver=user),status="accepted")
+            serializer =  UserFriendsListSeriailizer(friends, many=True,context={'user':user,  'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({"error":"User not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Friendship.DoesNotExist:
+            return Response({"error":"Friendships not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
