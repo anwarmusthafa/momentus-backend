@@ -44,6 +44,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=2),
+    'BLACKLIST_AFTER_ROTATION': True,
 }
 
 
@@ -58,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'channels',
+    'rest_framework_simplejwt.token_blacklist',
 
     # Custom apps
     'accounts',

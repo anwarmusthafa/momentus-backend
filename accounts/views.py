@@ -16,6 +16,7 @@ from django.utils import timezone
 from realtime.utils import send_notification
 from realtime.models import Notification
 from django.db.models import Q
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 User = get_user_model()
@@ -201,6 +202,18 @@ class ResetPassword(APIView):
             return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': 'An error occurred. Please try again.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class LogoutAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self,request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({"message": "Logout successful"}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 class MyProfile(APIView):
     permission_classes = [IsAuthenticated]
