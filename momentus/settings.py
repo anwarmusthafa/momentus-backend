@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'posts',
     'admin_app',
     'realtime',
+    'subscription',
     
 ]
 

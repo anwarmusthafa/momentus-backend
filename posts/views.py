@@ -220,7 +220,7 @@ class ExploreView(APIView):
         try:
             # Fetch posts, ordering by like count (popularity) and then by creation date (recency)
             posts = Post.objects.filter(is_blocked=False).annotate(
-                like_count=Count('like')
+                like_count=Count('likes')
             ).order_by('-like_count', '-created_at')
 
             # Paginate posts at the database level to fetch only 20 posts at a time

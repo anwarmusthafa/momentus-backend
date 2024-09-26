@@ -17,4 +17,5 @@ urlpatterns = [
     path("", include("posts.urls")),
     path("", include("realtime.urls")),
     path("", include("admin_app.urls")),
+    path("",include("subscription.urls"))
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
