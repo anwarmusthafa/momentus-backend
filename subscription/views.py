@@ -1,11 +1,24 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from .models import SubscriptionPlan, UserSubscription, Payment
 from .serializers import SubscriptionPlanSerializer
 from django.shortcuts import get_object_or_404
+import stripe
+from django.conf import settings
+from django.shortcuts import redirect
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+from django.db import transaction
+from datetime import timedelta
+from django.utils import timezone
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+YOUR_DOMAIN = 'http://localhost:3000'
 
 # Create your views here.
 
@@ -49,7 +62,7 @@ class SubcriptionPlanAPIView(APIView):
         plan = get_object_or_404(SubscriptionPlan, pk=pk)
         serializer = SubscriptionPlanSerializer(plan, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()  # Save the changes if data is valid
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -57,5 +70,71 @@ class SubcriptionPlanAPIView(APIView):
         plan = get_object_or_404(SubscriptionPlan,pk=pk)
         plan.delete()
         return Response({"message":"plan deleted successfully"},status=status.HTTP_204_NO_CONTENT)
-        
+
+
+class CreateCheckoutSession(APIView):
+    def post(self, request):
+        user = request.user
+        try:
+            # Fetch the subscription plan
+            plan_id = request.data.get('plan-id')
+            if not plan_id:
+                return Response({"error": "Plan ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            plan = get_object_or_404(SubscriptionPlan, pk=int(plan_id))
+            
+            # Calculate the amount in the smallest currency unit (paise)
+            amount = int(plan.price * 100)  # Convert to paise
+            
+            # Define the currency
+            currency = 'inr'
+            
+            # Begin atomic transaction
+            with transaction.atomic():
+                # Create a new Stripe checkout session
+                checkout_session = stripe.checkout.Session.create(
+                    payment_method_types=['card'],
+                    line_items=[{
+                        'price_data': {
+                            'currency': currency,
+                            'product_data': {
+                                'name': plan.name,  # Use the plan name as the product name
+                            },
+                            'unit_amount': amount,  # Price in paise
+                        },
+                        'quantity': 1,
+                    }],
+                    mode='payment',
+                    success_url='http://localhost:3000/?success=true',
+                    cancel_url='http://localhost:3000/?canceled=true',
+                )
+
+                # Create UserSubscription record after session creation
+                user_subscription = UserSubscription.objects.create(
+                    user=user,
+                    plan=plan,
+                    start_date=timezone.now(),
+                    end_date=timezone.now() + timedelta(days=plan.duration_in_days)
+                )
+
+                # Create a payment record
+                Payment.objects.create(
+                    user=user,
+                    subscription=user_subscription,
+                    amount=plan.price,  # Store the actual price, not the amount in cents
+                    transaction_id=checkout_session.id  # Use the Stripe session ID as the transaction ID
+                )
+
+                # Update user's `is_prime` status
+                user.is_prime = True
+                user.save()
+
+            # Return the session ID to the client
+            return Response({'id': checkout_session.id}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(e)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 

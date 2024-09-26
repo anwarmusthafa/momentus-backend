@@ -40,7 +40,7 @@ class UserSubscription(models.Model):  # Fixed typo (Modal -> Model)
     end_date = models.DateField()
     is_active = models.BooleanField(default=True)
     payment_status = models.CharField(
-        max_length=50, choices=PAYMENT_STATUS_CHOICES, default='Pending'
+        max_length=50, choices=PAYMENT_STATUS_CHOICES, default='Completed'
     )
     subscription_status = models.CharField(
         max_length=50, choices=SUBSCRIPTION_STATUS_CHOICES, default='Active'
@@ -64,7 +64,7 @@ class Payment(models.Model):
     payment_date = models.DateTimeField(auto_now_add=True)
     payment_method = models.CharField(default='Stripe')
     payment_status = models.CharField(
-        max_length=50, choices=PAYMENT_STATUS_CHOICES, default='Pending'
+        max_length=50, choices=PAYMENT_STATUS_CHOICES, default='Completed'
     )
     transaction_id = models.CharField(max_length=100, unique=True)  # Payment gateway transaction ID
 
