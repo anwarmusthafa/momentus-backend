@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from .models import SubscriptionPlan, UserSubscription, Payment
-from .serializers import SubscriptionPlanSerializer
+from .serializers import SubscriptionPlanSerializer , UserSubscriptionSerializer
 from django.shortcuts import get_object_or_404
 import stripe
 from django.conf import settings
@@ -26,13 +26,17 @@ class SubcriptionPlanAPIView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+        user = request.user
         try:
-            plans = SubscriptionPlan.objects.all()
+            plans = SubscriptionPlan.objects.filter(is_block=False)
             serializer = SubscriptionPlanSerializer(plans, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         
+        except UserSubscription.DoesNotExist:
+            return Response({"error": "User subscription not found"}, status=status.HTTP_404_NOT_FOUND)
+        
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self,request):
         name = request.data.get('name')
@@ -135,6 +139,54 @@ class CreateCheckoutSession(APIView):
         except Exception as e:
             print(e)
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+class SubscriptionAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        try:
+            if user.is_prime:
+                # Fetch active subscription for prime users
+                subscription = UserSubscription.objects.filter(user=user, is_active=True).first()
+                if subscription:
+                    serializer = UserSubscriptionSerializer(subscription)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response({"error": "No active subscription found"}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                # For non-prime users, fetch all available subscription plans
+                plans = SubscriptionPlan.objects.filter(is_block=False)
+                serializer = SubscriptionPlanSerializer(plans, many=True)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        except UserSubscription.DoesNotExist:
+            return Response({"error": "User subscription not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            # For non-prime users, fetch all available subscription plans
+    def post(self,request):
+        user = request.user
+        try:
+            subscription_id = request.data.get('subscription-id')
+            if not subscription_id:
+                return Response({"error":"Subscription ID is required"},status=status.HTTP_400_BAD_REQUEST)
+            print(subscription_id)
+            subscription = UserSubscription.objects.get(id=subscription_id)
+            if subscription.user == user or user.is_superuser:
+                subscription.is_active = False
+                subscription.subscription_status = 'Cancelled'
+                subscription.end_date = timezone.now()
+                user.is_prime = False
+                subscription.save()
+                user.save()
+                return Response({"message":"Subscription cancelled successfully"},status=status.HTTP_200_OK)
+            else:
+                return Response({"error":"Permission denied"},status=status.HTTP_403_FORBIDDEN)
+        except UserSubscription.DoesNotExist:
+            return Response({"error":"Subscription not found"},status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error":str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 
