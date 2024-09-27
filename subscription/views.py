@@ -17,6 +17,8 @@ from django.db import transaction
 from datetime import timedelta
 from django.utils import timezone
 
+
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 YOUR_DOMAIN = 'http://localhost:3000'
 
