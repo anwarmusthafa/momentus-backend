@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.db import transaction
 from datetime import timedelta
 from django.utils import timezone
+from .tasks import send_subscription_email
 
 
 
@@ -134,6 +135,15 @@ class CreateCheckoutSession(APIView):
                 # Update user's `is_prime` status
                 user.is_prime = True
                 user.save()
+
+                subscription_details = {
+                    'plan_name': plan.name,
+                    'start_date': user_subscription.start_date,
+                    'end_date': user_subscription.end_date,
+                    'amount': plan.price,
+                    }
+                send_subscription_email.delay(user.username, subscription_details)
+
 
             # Return the session ID to the client
             return Response({'id': checkout_session.id}, status=status.HTTP_200_OK)

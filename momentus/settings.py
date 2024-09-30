@@ -9,14 +9,15 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
+from __future__ import absolute_import, unicode_literals
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+from celery import Celery
 
 load_dotenv()
-
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'momentus.settings')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -60,7 +61,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'channels',
     'rest_framework_simplejwt.token_blacklist',
-
+    'django_celery_beat',
+    'django_celery_results',
+    
     # Custom apps
     'accounts',
     'rest_framework',
@@ -164,6 +167,21 @@ CACHES = {
         'TIMEOUT': 86400,  # Cache timeout for 1 day
     }
 }
+
+app = Celery('momentus')
+app.config_from_object('django.conf:settings', namespace='CELERY')
+app.autodiscover_tasks()
+
+# Celery Configuration Options
+CELERY_BROKER_URL = 'redis://localhost:6380/0'  # Example with Redis
+CELERY_RESULT_BACKEND = 'redis://localhost:6380/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TASK_POOL = 'solo'
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+
+
 
 
 # Internationalization

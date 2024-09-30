@@ -7,7 +7,6 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer ,FriendsListSerializer, UserFriendsListSeriailizer 
 from .models import CustomUser ,Friendship
-from .utils import send_verification_email
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import make_password , check_password
@@ -17,6 +16,7 @@ from realtime.utils import send_notification
 from realtime.models import Notification
 from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
+from .tasks import send_verification_email_task
 
 
 User = get_user_model()
@@ -40,7 +40,7 @@ class RegisterUserView(generics.CreateAPIView):
             user.verification_code = hashed_code
             print(verification_code)
             user.save()
-            send_verification_email(user.username, verification_code)
+            send_verification_email_task.delay(user.username, verification_code)
             return Response({'message': 'User registered. Check your email for verification code.', 'user': user.id}, status=status.HTTP_201_CREATED)
         except Exception as e:
             print('Error:', e)
@@ -139,7 +139,7 @@ class ForgotPassword(APIView):
                 user.verification_code = hashed_code
                 user.save()
                 
-                send_verification_email(user.username, verification_code)
+                send_verification_email_task.delay(user.username, verification_code)
                 return Response({'message': 'Email sent. Check your email for verification code.'}, status=status.HTTP_200_OK)
             else:
                 return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
