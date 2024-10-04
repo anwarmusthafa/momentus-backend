@@ -128,3 +128,15 @@ class UserFriendsListSeriailizer(serializers.ModelSerializer):
             'username': friend.momentus_user_name,
             'profile_picture': friend.profile_picture.url if friend.profile_picture else None,
         }
+    
+class UserSearchSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.ImageField(max_length=None, allow_empty_file=False, use_url=True , required=False)
+    class Meta:
+        model = User
+        fields = ['id', 'momentus_user_name', 'profile_picture', 'is_prime']
+
+    def get_profile_picture_url(self, obj):
+        if obj.profile_picture:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.profile_picture.url)
+        return None

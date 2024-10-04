@@ -53,19 +53,36 @@ class PostAPI(APIView):
             return Response({"error": "An error occurred: " + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
+class PostPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+        
+
 class MyPosts(APIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = PostPagination  # Assign pagination class
 
-    def get(self, request,momentus_user_name):
+    def get(self, request, momentus_user_name):
         try:
-            momentus_user_name = momentus_user_name
-            my_posts = Post.objects.filter(user__momentus_user_name=momentus_user_name , is_blocked=False).order_by('-created_at')
-            serializer = PostSerializer(my_posts, many=True, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            # Fetch posts of the specified user, ordered by creation date
+            my_posts = Post.objects.filter(user__momentus_user_name=momentus_user_name, is_blocked=False).order_by('-created_at')
+            
+            # Apply pagination
+            paginator = PostPagination()
+            paginated_posts = paginator.paginate_queryset(my_posts, request)
+            
+            # Serialize paginated posts
+            serializer = PostSerializer(paginated_posts, many=True, context={'request': request})
+            
+            # Return paginated response
+            return paginator.get_paginated_response(serializer.data)
+        
         except Post.DoesNotExist:
             return Response({'error': 'Posts not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class PostDetailView(APIView):
     permission_classes = [IsAuthenticated]
 

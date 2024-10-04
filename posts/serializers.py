@@ -44,7 +44,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'post', 'comment', 'parent', 'created_at','momentus_user_name', 'profile_picture', 'commented_by','comment_post_user_id', 'replies']
+        fields = ['id','post', 'comment', 'parent', 'created_at','momentus_user_name', 'profile_picture', 'commented_by','comment_post_user_id', 'replies']
 
     def get_momentus_user_name(self, obj):
         return obj.user.momentus_user_name

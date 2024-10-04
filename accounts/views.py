@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 import random
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer ,FriendsListSerializer, UserFriendsListSeriailizer 
+from .serializers import UserSerializer, VerifyEmailSerializer , AdminTokenObtainPairSerializer , FriendshipSerializer ,FriendsListSerializer, UserFriendsListSeriailizer, UserSearchSerializer
 from .models import CustomUser ,Friendship
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
@@ -17,6 +17,7 @@ from realtime.models import Notification
 from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 from .tasks import send_verification_email_task
+from rest_framework.pagination import PageNumberPagination
 
 
 User = get_user_model()
@@ -246,16 +247,31 @@ class UserProfile(APIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
+class SerachUserPagination(PageNumberPagination):
+    page_size = 15  # First load 15 results
+    page_size_query_param = 'page_size'
+    max_page_size = 100  # Set max limit for results per page
+
 class SearchUser(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         query = request.GET.get('query')
         if not query:
             return Response({"error": "Invalid query"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            users = CustomUser.objects.filter(momentus_user_name__icontains=query)[:5]
-            serializer = UserSerializer(users, many=True, context={'request': request})
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            users = CustomUser.objects.filter(momentus_user_name__icontains=query)
+            
+            # Apply pagination
+            paginator = SerachUserPagination()
+            paginated_users = paginator.paginate_queryset(users, request)
+            
+            # Serialize paginated data
+            serializer = UserSearchSerializer(paginated_users, many=True, context={'request': request})
+            
+            # Return paginated response
+            return paginator.get_paginated_response(serializer.data)
+        
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -429,3 +445,45 @@ class UserFriendsList(APIView):
             return Response({"error":"Friendships not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class MutualFriendsList(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        # Fetch user1 (the currently logged-in user) and user2 (the user whose mutual friends we are checking)
+        user1 = request.user
+        user2 = get_object_or_404(CustomUser, pk=user_id)
+        
+        # Fetch all accepted friendships involving user1 or user2
+        friendships = Friendship.objects.filter(
+            (Q(sender=user1) | Q(receiver=user1) | Q(sender=user2) | Q(receiver=user2)) & Q(status='accepted')
+        ).select_related('sender', 'receiver')
+        
+        # Separate user1's friends and user2's friends
+        user1_friends = set(
+            friendship.receiver if friendship.sender == user1 else friendship.sender
+            for friendship in friendships
+            if user1 in [friendship.sender, friendship.receiver]
+        )
+        user2_friends = set(
+            friendship.receiver if friendship.sender == user2 else friendship.sender
+            for friendship in friendships
+            if user2 in [friendship.sender, friendship.receiver]
+        )
+
+        # Find mutual friends by intersecting the two sets
+        mutual_friends = user1_friends.intersection(user2_friends)
+
+        # Serialize the mutual friends into a JSON-friendly format
+        mutual_friends_data = [
+            {
+                'momentus_user_name': friend.momentus_user_name,
+                'full_name': friend.full_name,
+                'profile_picture': request.build_absolute_uri(friend.profile_picture.url) if friend.profile_picture else None,
+            }
+            for friend in mutual_friends
+        ]
+        
+        # Return the serialized mutual friends data
+        return Response({'mutual_friends': mutual_friends_data}, status=status.HTTP_200_OK)
