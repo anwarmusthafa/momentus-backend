@@ -1,6 +1,6 @@
 from rest_framework import generics, serializers, status
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny , IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -21,6 +21,7 @@ from django.db.models import Count, Sum
 from subscription.models import UserSubscription, Payment
 from posts.models import Post, Like, Comment
 from accounts.models import Friendship
+from accounts.authentication import CustomJWTAuthentication
 
 
 class UsersAPI(APIView):
@@ -79,7 +80,8 @@ class BlockPost(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class DashboardAPIView(APIView):
-    permission_classes = [AllowAny]
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         # Try to get cached data
         cache_key = "admin_dashboard_data"
