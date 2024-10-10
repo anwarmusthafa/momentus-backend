@@ -34,13 +34,14 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 REST_FRAMEWORK = {
-   'DEFAULT_AUTHENTICATION_CLASSES': (
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'accounts.authentication.CustomJWTAuthentication',
     ),
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
     ],
 }
+
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
@@ -165,9 +166,18 @@ CACHES = {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },
         'TIMEOUT': 86400,  # Cache timeout for 1 day
-    }
+    },
+    'cache-for-ratelimiting': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',  # or 'django_redis.cache.RedisCache'
+        'LOCATION': 'redis://127.0.0.1:6380/1',  # Same Redis server location
+        # 'OPTIONS': {
+        #     'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        # },
+        'TIMEOUT': 86400,  # Cache timeout for 1 day (optional)
+    },
 }
 
+RATELIMIT_USE_CACHE = 'cache-for-ratelimiting'
 app = Celery('momentus')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()

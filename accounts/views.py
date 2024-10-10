@@ -18,6 +18,10 @@ from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 from .tasks import send_verification_email_task
 from rest_framework.pagination import PageNumberPagination
+from django.core.cache import cache
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
+
 
 
 User = get_user_model()
@@ -119,11 +123,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError('An error occurred during authentication. Please try again.')
 
 class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
+    serializer_class = CustomTokenObtainPairSerializer  # Specify the serializer class
+
+    @method_decorator(ratelimit(key='user_or_ip', rate='5/m'))
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        # Call the parent class's post method to handle the request
+        return super().post(request, *args, **kwargs)
+
 
 class AdminTokenObtainPairView(TokenObtainPairView):
     serializer_class = AdminTokenObtainPairSerializer
-
 
 class ForgotPassword(APIView):
     permission_classes = [AllowAny]
@@ -220,9 +232,14 @@ class MyProfile(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
         user = request.user
+        cache_key = f"profile:{user.id}"
+        profile = cache.get(cache_key)
+        if profile:
+            return Response(profile, status=status.HTTP_200_OK)
         try:
             profile = CustomUser.objects.get(id=user.id)
             serializer = UserSerializer(profile, context={'request': request})
+            cache.set(cache_key, serializer.data, 60 * 5)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_400_BAD_REQUEST)
@@ -234,6 +251,7 @@ class MyProfile(APIView):
             serializer.save()
             updated_profile = CustomUser.objects.get(id=user.id)
             updated_serializer = UserSerializer(updated_profile, context={'request': request})
+            cache.delete(f"profile:{user.id}")
             return Response(updated_serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
