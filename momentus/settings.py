@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'realtime',
     'channels',
     'rest_framework_simplejwt.token_blacklist',
     'django_celery_beat',
@@ -71,7 +72,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'posts',
     'admin_app',
-    'realtime',
     'subscription',
     
 ]
@@ -118,11 +118,12 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('127.0.0.1', 6380)],
+            "hosts": [('redis', 6379)],
         },
     },
 }
 
+REDIS_URL = "redis://redis:6379/0"
 
 
 # Database
@@ -134,7 +135,7 @@ DATABASES = {
         'NAME': os.getenv('DATABASE_NAME'),
         'USER': os.getenv('DATABASE_USER'),
         'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-        'HOST': os.getenv('DATABASE_HOST'),
+        'HOST': 'momentus-db-1',
         'PORT': os.getenv('DATABASE_PORT'),
     }
 }
@@ -161,7 +162,7 @@ AUTH_PASSWORD_VALIDATORS = [
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6380/1',  # Redis server location
+        'LOCATION': 'redis://momentus-redis-1:6379/1',  
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },
@@ -169,7 +170,7 @@ CACHES = {
     },
     'cache-for-ratelimiting': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',  # or 'django_redis.cache.RedisCache'
-        'LOCATION': 'redis://127.0.0.1:6380/1',  # Same Redis server location
+        'LOCATION': 'redis://momentus-redis-1:6379/1',  # Same Redis server location
         # 'OPTIONS': {
         #     'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         # },
@@ -183,11 +184,11 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 # Celery Configuration Options
-CELERY_BROKER_URL = 'redis://localhost:6380/0'  # Example with Redis
-CELERY_RESULT_BACKEND = 'redis://localhost:6380/0'
+CELERY_BROKER_URL = 'redis://momentus-redis-1:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'  # Same here
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_TASK_POOL = 'solo'
+CELERY_TASK_POOL = 'solo'  # Consider changing this if you want to use more than one worker
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 

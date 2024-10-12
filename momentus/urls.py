@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
-from accounts.views import CustomTokenObtainPairView , LogoutAPIView
+from accounts.views import CustomTokenObtainPairView , LogoutAPIView, health_check
 from django.conf import settings
 from django.conf.urls.static import static
 from accounts.views import AdminTokenObtainPairView
@@ -17,5 +17,6 @@ urlpatterns = [
     path("", include("posts.urls")),
     path("", include("realtime.urls")),
     path("momentus/admin/", include("admin_app.urls")),
-    path("",include("subscription.urls"))
+    path("",include("subscription.urls")),
+    path("health/", health_check, name='health-check'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

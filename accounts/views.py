@@ -505,3 +505,8 @@ class MutualFriendsList(APIView):
         
         # Return the serialized mutual friends data
         return Response({'mutual_friends': mutual_friends_data}, status=status.HTTP_200_OK)
+
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({"status": "ok"}, status=200)

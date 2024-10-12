@@ -1,0 +1,89 @@
+version: '3.8'  # Use a specific version to avoid compatibility issues
+
+services:
+  web:
+    build: .
+    command: daphne -b 0.0.0.0 -p 8000 momentus.asgi:application
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - momentus-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]  # Add a health endpoint
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: momentus
+      POSTGRES_USER: momentus
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - momentus-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - momentus-network
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped  # Restart policy for Redis
+
+  celery:
+    build: .
+    command: celery -A momentus worker --loglevel=info
+    volumes:
+      - .:/app
+    env_file: .env
+    depends_on:
+      - redis
+      - db
+    networks:
+      - momentus-network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "momentus", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  celery-beat:
+    build: .
+    command: celery -A momentus beat --loglevel=info
+    volumes:
+      - .:/app
+    env_file: .env
+    depends_on:
+      - redis
+      - db
+    networks:
+      - momentus-network
+    healthcheck:
+      test: ["CMD", "celery", "-A", "momentus", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  momentus-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
