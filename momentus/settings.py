@@ -220,8 +220,9 @@ AWS_DEFAULT_ACL = os.getenv('AWS_DEFAULT_ACL', None)
 
 AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
 AWS_DEFAULT_ACL = None
-STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/your-service1/'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/your-service1/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Ensure this is not None or incorrectly set.
+
 
 
 # S3 default storage backend

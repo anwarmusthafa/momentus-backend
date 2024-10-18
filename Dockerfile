@@ -22,6 +22,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy the current directory contents into the container at /app
 COPY . .
 
+# Collect static files
+RUN python manage.py collectstatic --noinput
 # Expose port 8000 for Django app
 EXPOSE 8000
 

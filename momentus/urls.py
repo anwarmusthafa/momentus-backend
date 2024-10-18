@@ -19,4 +19,6 @@ urlpatterns = [
     path("momentus/admin/", include("admin_app.urls")),
     path("",include("subscription.urls")),
     path("health/", health_check, name='health-check'),
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
