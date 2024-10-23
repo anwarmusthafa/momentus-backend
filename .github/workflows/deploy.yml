@@ -21,10 +21,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
-          context: .
+          context: .  # The context for the Docker build (current directory)
           push: true
           tags: anwarmusthafa/momentus-web:latest
 
@@ -35,9 +35,18 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           port: 22
-          source: "."
-          target: "/path/on/your/server"
+          source: "."  # This transfers everything from the current directory. Modify if needed.
+          target: "/home/ubuntu/momentus/"  # Ensure this matches the directory created on your EC2 instance
 
       - name: Restart Docker containers
         run: |
-          ssh -i ${{ secrets.EC2_PRIVATE_KEY }} -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "docker-compose -f /path/to/docker-compose.yml up -d"
+          set -e  # Exit immediately if a command exits with a non-zero status
+          ssh -i ${{ secrets.EC2_PRIVATE_KEY }} -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "
+            cd /home/ubuntu/momentus/ && \
+            docker-compose -f /path/to/docker-compose.yml up -d --remove-orphans
+          "
+
+      - name: Cleanup
+        run: |
+          # Optionally clean up files if needed
+          echo "Cleanup step (if needed)"
